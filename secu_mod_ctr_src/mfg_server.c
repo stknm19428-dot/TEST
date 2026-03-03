@@ -17,6 +17,8 @@
 // Run:
 //   ./mfg_server
 
+// 왜 push 안되냐
+
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
