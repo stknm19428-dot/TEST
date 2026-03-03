@@ -72,15 +72,53 @@ static UA_ByteString loadFile(const char *path) {
     return bs;
 }
 
+
+/* ---------- Modbus Address Enumeration ---------- */
+// 1. 디지털 비트 주소 (%QX) - modbus_read_bits / write_bit용
+enum SCM_COIL_ADDR {
+    SCM_QX_START   = 0,  // %QX0.0
+    SCM_QX_STOP    = 1,  // %QX0.1
+    SCM_QX_AUTO    = 2,  // %QX0.2
+
+    SCM_QX_RESET1  = 3,  // %QX0.3  
+    SCM_QX_RESET2  = 11, // %QX1.3 
+    SCM_QX_RESET3  = 19, // %QX2.3
+    
+    SCM_QX_RUN1    = 4   // %QX0.4
+    SCM_QX_RUN2    = 12  // %QX1.4
+    SCM_QX_RUN3    = 20  // %QX2.4
+
+    SCM_QX_GREEN1  = 5,  // %QX0.5
+    SCM_QX_RED1    = 6,  // %QX0.6
+    SCM_QX_GREEN2  = 13, // %QX1.5
+    SCM_QX_RED2    = 14, // %QX1.6
+    SCM_QX_GREEN3  = 21, // %QX2.5
+    SCM_QX_RED3    = 22  // %QX2.6
+};
+
+// 2. 아날로그 레지스터 주소 (%MW) - modbus_read_registers용
+enum SCM_REG_ADDR {
+    SCM_MW_COUNT1  = 1025, // %MW1 - 현재 개수
+    SCM_MW_COUNT2  = 1026, // %MW2
+    SCM_MW_COUNT3  = 1027, // %MW3
+    SCM_MW_MAX1    = 1028, // %MW4 - 목표 개수
+    SCM_MW_MAX1    = 1029, // %MW5
+    SCM_MW_MAX1    = 1030, // %MW6
+    SCM_MW_SPEED1  = 1031, // %MW7 - 컨베이어 속도 (Pulse )
+    SCM_MW_SPEED2  = 1032, // %MW8
+    SCM_MW_SPEED1  = 1033  // %MW9
+};
+
 /* ---------- NodeIds ---------- */
-static UA_NodeId STATUS_ID;
-static UA_NodeId TEMP_ID;
-static UA_NodeId HUM_ID;
+
 
 /* ---------- Modbus(OpenPLC) ---------- */
-static UA_NodeId QX0_0_ID;
+static UA_NodeId QX0_0_ID; //기존
 static UA_NodeId QX0_1_ID;
 static UA_NodeId QX0_2_ID;
+
+static UA_NodeId SCM_COUNT1_ID, SCM_COUNT2_ID, SCM_COUNT3_ID;
+static UA_NodeId SCM_SPEED1_ID, SCM_SPEED2_ID, SCM_SPEED3_ID,
 
 static modbus_t *g_mb = NULL;
 static int g_mb_connected = 0;
@@ -93,7 +131,7 @@ static int modbus_connect_once(void) {
         return -1;
     }
     g_mb_connected = 1;
-    printf("[MFG][MODBUS] connected to OpenPLC (127.0.0.1:502)\n");
+    printf("[MFG][MODBUS] connected to OpenPLC (10.10.16.209:502)\n");
     return 0;
 }
 
@@ -105,7 +143,6 @@ static void modbus_reconnect(void) {
 }
 
 
-
 static void openplc_qx_update_cb(UA_Server *server, void *data) {
     (void)data;
     if(!g_mb) return;
@@ -115,18 +152,19 @@ static void openplc_qx_update_cb(UA_Server *server, void *data) {
             return;
     }
 
-    uint8_t bits[3] = {0};
-    int rc = modbus_read_bits(g_mb, 0, 3, bits);
+    uint16_t counts[3] = {0};
+    int rc = modbus_read_registers(g_mb, SCM_MW_COUNT1, 3, counts);
+
     if(rc != 3) {
         fprintf(stderr, "[MFG][MODBUS] read_bits failed(rc=%d): %s\n",
-                rc, modbus_strerror(errno));
+            rc, modbus_strerror(errno));
         modbus_reconnect();
         return;
     }
-
-    UA_Boolean b0 = bits[0] ? true : false;
-    UA_Boolean b1 = bits[1] ? true : false;
-    UA_Boolean b2 = bits[2] ? true : false;
+/*  현규 기존 코드
+    UA_Boolean b0 = counts[0] ? true : false;
+    UA_Boolean b1 = counts[1] ? true : false;
+    UA_Boolean b2 = counts[2] ? true : false;
 
     UA_Variant v0, v1, v2;
     UA_Variant_init(&v0); UA_Variant_init(&v1); UA_Variant_init(&v2);
@@ -137,9 +175,21 @@ static void openplc_qx_update_cb(UA_Server *server, void *data) {
     (void)UA_Server_writeValue(server, QX0_0_ID, v0);
     (void)UA_Server_writeValue(server, QX0_1_ID, v1);
     (void)UA_Server_writeValue(server, QX0_2_ID, v2);
+*/
+    for(int i = 0; i < 3; i++) {
+        UA_Int16 val = (UA_Int16)counts[i];
+        UA_Variant v;
+        UA_Variant_init(&v);
+        UA_Variant_setScalar(&v, &val, &UA_TYPES[UA_TYPES_INT16]);
+
+        // i=0(COUNT1), i=1(COUNT2), i=2(COUNT3) 노드에 쓰기
+        UA_NodeId targetId = (i == 0) ? SCM_COUNT1_ID : 
+                             (i == 1) ? SCM_COUNT2_ID : SCM_COUNT3_ID;
+        UA_Server_writeValue(server, targetId, v);
+    }    
 }
 
-
+// start, stop, auto 활용
 static void add_bool_node(UA_Server *server, UA_NodeId id,
                           const char *browseName, const char *displayName) {
     
@@ -166,7 +216,28 @@ static void add_bool_node(UA_Server *server, UA_NodeId id,
         printf("[MFG] add %s failed: 0x%08x\n", browseName, (unsigned)rc2);
 }
 
+static void add_int16_node(UA_Server *server, UA_NodeId id,
+                           const char *browseName, const char *displayName,
+                           UA_Byte accessLevel) {
+    UA_VariableAttributes attr = UA_VariableAttributes_default;
+    attr.displayName = UA_LOCALIZEDTEXT("en-US", (char*)displayName);
+    
+    // 초기값 0 설정
+    UA_Int16 init = 0;
+    UA_Variant_setScalar(&attr.value, &init, &UA_TYPES[UA_TYPES_INT16]);
+    attr.dataType = UA_TYPES[UA_TYPES_INT16].typeId;
 
+    // 권한 설정 (읽기 전용 혹은 읽기/쓰기)
+    attr.accessLevel = accessLevel;
+    attr.userAccessLevel = accessLevel;
+
+    UA_Server_addVariableNode(server, id,
+        UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER),
+        UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
+        UA_QUALIFIEDNAME(1, (char*)browseName),
+        UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
+        attr, NULL, NULL);
+}
 
 //---------------------------------------------------------------------------------
 
@@ -293,85 +364,6 @@ activateSession_strict_cb(UA_Server *server,
     }
 
     return UA_STATUSCODE_GOOD;
-}
-
-/* ---------- DHT11(IIO) helper ---------- */
-static int find_dht_iio_device(char *outPath, size_t outLen) {
-    const char *base = "/sys/bus/iio/devices";
-    DIR *d = opendir(base);
-    if(!d) return -1;
-
-    struct dirent *ent;
-    while((ent = readdir(d))) {
-        if(strncmp(ent->d_name, "iio:device", 10) != 0) continue;
-
-        char namePath[512];
-        int n = snprintf(namePath, sizeof(namePath), "%s/%s/name", base, ent->d_name);
-        if(n < 0 || (size_t)n >= sizeof(namePath)) continue;
-
-        FILE *f = fopen(namePath, "r");
-        if(!f) continue;
-
-        char name[128] = {0};
-        if(fgets(name, sizeof(name), f)) {
-            name[strcspn(name, "\r\n")] = 0;
-            if(strstr(name, "dht") || strstr(name, "DHT")) {
-                int m = snprintf(outPath, outLen, "%s/%s", base, ent->d_name);
-                fclose(f);
-                closedir(d);
-                if(m < 0 || (size_t)m >= outLen) return -1;
-                return 0;
-            }
-        }
-        fclose(f); 
-    }
-    closedir(d);
-    return -1;
-}
-
-static int read_long_file(const char *path, long *out) {
-    FILE *f = fopen(path, "r");
-    if(!f) return -1;
-    char buf[64];
-    if(!fgets(buf, sizeof(buf), f)) { fclose(f); return -1; }
-    fclose(f);
-    errno = 0;
-    long v = strtol(buf, NULL, 10);
-    if(errno) return -1;
-    *out = v;
-    return 0;
-}
-
-/* 흔한 단위: milli (예: 23000 => 23.0C, 45000 => 45.0%) */
-static int read_dht11_iio(double *tempC, double *humPct) {
-    char dev[512];
-    if(find_dht_iio_device(dev, sizeof(dev)) != 0) return -1;
-
-    char tPath[600], hPath[600];
-    int nt = snprintf(tPath, sizeof(tPath), "%s/in_temp_input", dev);
-    int nh = snprintf(hPath, sizeof(hPath), "%s/in_humidityrelative_input", dev);
-    if(nt < 0 || (size_t)nt >= sizeof(tPath)) return -1;
-    if(nh < 0 || (size_t)nh >= sizeof(hPath)) return -1;
-
-    long tRaw=0, hRaw=0;
-    if(read_long_file(tPath, &tRaw) != 0) return -1;
-    if(read_long_file(hPath, &hRaw) != 0) return -1;
-
-    *tempC = (double)tRaw / 1000.0;
-    *humPct = (double)hRaw / 1000.0;
-    return 0;
-}
-
-static void dht_update_cb(UA_Server *server, void *data) {
-    (void)data;
-    double t=0.0, h=0.0;
-    if(read_dht11_iio(&t, &h) == 0) {
-        UA_Variant vT, vH;
-        UA_Variant_setScalar(&vT, &t, &UA_TYPES[UA_TYPES_DOUBLE]);
-        UA_Variant_setScalar(&vH, &h, &UA_TYPES[UA_TYPES_DOUBLE]);
-        (void)UA_Server_writeValue(server, TEMP_ID, vT);
-        (void)UA_Server_writeValue(server, HUM_ID, vH);
-    }
 }
 
 /* ---------- Security helpers ---------- */
@@ -570,44 +562,6 @@ int main(void) {
             printf("[MFG] add status failed: 0x%08x\n", (unsigned)rc);
     }
 
-    /* Temp node */
-    {
-        UA_VariableAttributes attr = UA_VariableAttributes_default;
-        attr.displayName = UA_LOCALIZEDTEXT("en-US", "MFG_Temp");
-        double t = 20.0;
-        UA_Variant_setScalar(&attr.value, &t, &UA_TYPES[UA_TYPES_DOUBLE]);
-
-        rc = UA_Server_addVariableNode(server,
-            TEMP_ID,
-            UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER),
-            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
-            UA_QUALIFIEDNAME(1, "MFG_Temp"),
-            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
-            attr, NULL, NULL);
-
-        if(rc != UA_STATUSCODE_GOOD)
-            printf("[MFG] add temp failed: 0x%08x\n", (unsigned)rc);
-    }
-
-    /* Humidity node */
-    {
-        UA_VariableAttributes attr = UA_VariableAttributes_default;
-        attr.displayName = UA_LOCALIZEDTEXT("en-US", "MFG_Humidity");
-        double h = 50.0;
-        UA_Variant_setScalar(&attr.value, &h, &UA_TYPES[UA_TYPES_DOUBLE]);
-
-        rc = UA_Server_addVariableNode(server,
-            HUM_ID,
-            UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER),
-            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
-            UA_QUALIFIEDNAME(1, "MFG_Humidity"),
-            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
-            attr, NULL, NULL);
-
-        if(rc != UA_STATUSCODE_GOOD)
-            printf("[MFG] add hum failed: 0x%08x\n", (unsigned)rc);
-    }
-
     /* Method: StartOrder(orderId:String) */
     {
         UA_Argument inArg;
@@ -653,7 +607,7 @@ int main(void) {
     }
 
     /* ---- Modbus ctx (OpenPLC local) ---- */
-    g_mb = modbus_new_tcp("127.0.0.1", 502);
+    g_mb = modbus_new_tcp("10.10.16.209", 502);
     if(!g_mb) {
         fprintf(stderr, "[MFG][MODBUS] modbus_new_tcp failed\n");
     } else {
