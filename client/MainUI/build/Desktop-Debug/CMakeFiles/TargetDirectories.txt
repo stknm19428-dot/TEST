@@ -1,9 +1,0 @@
-/home/pi/workspace/embedded/proejct_A/MES/QT/MainUI/build/Desktop-Debug/CMakeFiles/MainUI.dir
-/home/pi/workspace/embedded/proejct_A/MES/QT/MainUI/build/Desktop-Debug/CMakeFiles/edit_cache.dir
-/home/pi/workspace/embedded/proejct_A/MES/QT/MainUI/build/Desktop-Debug/CMakeFiles/rebuild_cache.dir
-/home/pi/workspace/embedded/proejct_A/MES/QT/MainUI/build/Desktop-Debug/CMakeFiles/list_install_components.dir
-/home/pi/workspace/embedded/proejct_A/MES/QT/MainUI/build/Desktop-Debug/CMakeFiles/install.dir
-/home/pi/workspace/embedded/proejct_A/MES/QT/MainUI/build/Desktop-Debug/CMakeFiles/install/local.dir
-/home/pi/workspace/embedded/proejct_A/MES/QT/MainUI/build/Desktop-Debug/CMakeFiles/install/strip.dir
-/home/pi/workspace/embedded/proejct_A/MES/QT/MainUI/build/Desktop-Debug/CMakeFiles/MainUI_autogen_timestamp_deps.dir
-/home/pi/workspace/embedded/proejct_A/MES/QT/MainUI/build/Desktop-Debug/CMakeFiles/MainUI_autogen.dir

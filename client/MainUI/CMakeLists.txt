@@ -12,18 +12,33 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Charts Sql)
 
-
-set(PROJECT_SOURCES
-        main.cpp
-        mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
-)
-
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(MainUI
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+
+        main.cpp
+
+        # Core
+        src/core/database_manager.h
+        src/core/database_manager.cpp
+
+        # Services
+        src/services/auth_service.h
+        src/services/auth_service.cpp
+
+        # Views
+        src/views/mainwindow.h
+        src/views/mainwindow.cpp
+        src/views/mainwindow.ui
+
+        src/views/login_widget.h
+        src/views/login_widget.cpp
+        src/views/login_widget.ui
+
+        src/views/dashboard_widget.h
+        src/views/dashboard_widget.cpp
+        src/views/dashboard_widget.ui
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET MainUI APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -42,6 +57,12 @@ else()
         )
     endif()
 endif()
+
+target_include_directories(MainUI PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/services
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/views
+)
 
 target_link_libraries(MainUI PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Charts Qt${QT_VERSION_MAJOR}::Sql)
 # target_link_libraries(MainUI PRIVATE Qt${QT_VERSION_MAJOR}::Charts Qt6::Sql)
