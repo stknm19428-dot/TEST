@@ -37,7 +37,6 @@ INSERT INTO user_password (id, user_id, password_hash, salt) VALUES
 ('up1', 'u2', 'hashed_password_000', 'salt-02'),
 
 
-
 -- [물류]
 INSERT INTO inventory (id, company_id, item_code, item_name, current_stock, min_stock_level, max_stock_level, unit, location) VALUES
 ('inv1', 's1', 'i1', 'Aluminum_Frame', 450, 100, 1000, 'A', 'HUB_A'),
@@ -46,8 +45,8 @@ INSERT INTO inventory (id, company_id, item_code, item_name, current_stock, min_
 ('inv4', 's4', 'i4', 'Radiator', 100, 100 ,700, 'A', 'HUB_B');
 
 INSERT INTO inventory_order_logs (id, user_id, item_id, stock, status, created_at, updated_at) VALUES 
-('io-log1', 'u1', 'inv1', 100, 'PENDING', 'mm-dd', 'mm-dd'),
-('io-log2', 'u2', 'inv2', 300, 'PENDING', 'mm-dd', 'mm-dd');
+('io-log1', 'u1', 'inv1', 100, 'PENDING', '02-28', '03-01'),
+('io-log2', 'u2', 'inv2', 300, 'PENDING', '02-28', '03-01');
 
 -- [제조 데이터] 제품 및 BOM
 INSERT INTO product (id, product_code, product_name, product_stock, description) VALUES 
