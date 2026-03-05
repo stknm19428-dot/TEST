@@ -22,7 +22,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // 대시보드 위젯(dashBoardPage)에서 오는 시그널을 stackedWidget의 setCurrentIndex와 연결
     connect(ui->dashBoardPage, &DashboardWidget::PageChangeCompLists, this, [this](){
-        ui->stackedWidget->setCurrentWidget(ui->testPage); // 인덱스 번호 대신 위젯 객체로 직접 지정
+        ui->stackedWidget->setCurrentWidget(ui->partnerManagePage); // 인덱스 번호 대신 위젯 객체로 직접 지정
     });
 }
 // 에러 원인 1: 소멸자 구현 누락 해결

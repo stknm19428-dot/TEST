@@ -40,6 +40,10 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/views/dashboard_widget.cpp
         src/views/dashboard_widget.ui
         src/views/test_widget.h src/views/test_widget.cpp src/views/test_widget.ui
+
+        src/views/partner_manage_widget.cpp
+        src/views/partner_manage_widget.h
+        src/views/partner_manage_widget.ui
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET MainUI APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

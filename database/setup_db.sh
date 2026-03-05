@@ -194,8 +194,6 @@ INSERT INTO product_logs (id, order_id, user_id, assignment_part, motor_speed, p
 ('prod_live1', 'po1', 'u1', 'Assembly', 50, 100, 5, 'IN_PROGRESS', '2026-02-26'),
 ('prod_live2', 'po2', 'u2', 'Assembly', 70, 300, 10, 'IN_PROGRESS', '2026-03-02');
 
-INSERT INTO process (id, process_name) VALUES ('env_p1', 'TEMP'), ('env_p2', 'FLAME');
-
 INSERT INTO environment_logs (id, process_id, sensor_type, sensor_value) VALUES
 ('env1', 'p1', 'TEMP', '26.5'), ('env2', 'p1', 'FLAME', '0');
 EOF
