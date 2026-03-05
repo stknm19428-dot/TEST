@@ -29,12 +29,8 @@ protected:
 
 private slots:
     void on_CompanyListBtn_clicked();
+    void on_ScmManageBtn_clicked();
 
-signals:
-    void PageChangeCompLists(int index); // 페이지 전환 요청 시그널
-
-private slots:
-    void on_CompanyListBtn_clicked();
 
 private:
     Ui::DashboardWidget *ui;

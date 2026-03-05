@@ -47,5 +47,8 @@ void MainWindow::moveToPage(PageType type) {
     case PageType::PartnerManage:
         ui->stackedWidget->setCurrentWidget(ui->partnerManagePage);
         break;
+    case PageType::ScmManage:
+        ui->stackedWidget->setCurrentWidget(ui->ScmManagePage);
+        break;
     }
 }
