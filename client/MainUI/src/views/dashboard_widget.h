@@ -1,4 +1,4 @@
-#ifndef DASHBOARD_WIDGET_H
+﻿#ifndef DASHBOARD_WIDGET_H
 #define DASHBOARD_WIDGET_H
 
 #include <QWidget>
@@ -15,6 +15,12 @@ public:
     explicit DashboardWidget(QWidget *parent = nullptr);
     ~DashboardWidget();
     void initChart(); // 차트를 초기화하는 함수
+
+signals:
+    void PageChangeCompLists(int index); // 페이지 전환 요청 시그널
+
+private slots:
+    void on_CompanyListBtn_clicked();
 
 private:
     Ui::DashboardWidget *ui;

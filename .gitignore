@@ -1,0 +1,24 @@
+# 빌드 결과물 (가장 중요)
+build*/
+client/MainUI/build/
+bin/
+*.o
+*.obj
+*.so
+*.a
+
+# Qt Creator 설정
+*.user
+*.user.*
+
+# VS Code 설정
+.vscode/
+.qtc_clangd/
+
+# 데이터베이스 파일 (sh로 생성하므로 .db 파일은 올리지 않음)
+*.db
+*.sqlite
+
+# 기타 임시 파일
+.DS_Store
+Thumbs.db
