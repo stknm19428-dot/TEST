@@ -2,14 +2,13 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "login_widget.h" // 추가
+#include "base/page_types.h" // 1. 이 헤더가 반드시 포함되어야 합니다!
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
-class MainWindow : public QMainWindow
-{
+class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
@@ -18,6 +17,10 @@ public:
 
 private:
     Ui::MainWindow *ui;
-    void showChart(); // 기존 차트 로직
+
+    void setupNavigation();
+    // 2. 에러 메시지에서 'int'로 인식되던 부분을 'PageType'으로 명확히 수정합니다.
+    void moveToPage(PageType type);
 };
+
 #endif

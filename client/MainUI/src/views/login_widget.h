@@ -1,6 +1,7 @@
 #ifndef LOGIN_WIDGET_H
 #define LOGIN_WIDGET_H
 
+#include "base/base_page_widget.h"
 #include <QWidget>
 #include "auth_service.h" // 인증 서비스를 써야 하니까 포함
 
@@ -8,7 +9,7 @@ namespace Ui {
 class LoginWidget;
 }
 
-class LoginWidget : public QWidget
+class LoginWidget : public BasePageWidget
 {
     Q_OBJECT
 

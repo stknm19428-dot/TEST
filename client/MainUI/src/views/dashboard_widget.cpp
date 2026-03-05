@@ -1,57 +1,202 @@
 ﻿#include "dashboard_widget.h"
 #include "ui_dashboard_widget.h"
-#include <QVBoxLayout>
 
-DashboardWidget::DashboardWidget(QWidget *parent) :
-    QWidget(parent), ui(new Ui::DashboardWidget) {
+#include <QDebug>
+#include <QLayoutItem>
+
+DashboardWidget::DashboardWidget(QWidget *parent)
+    : BasePageWidget(parent),
+      ui(new Ui::DashboardWidget)
+{
     ui->setupUi(this);
 }
 
-DashboardWidget::~DashboardWidget() { delete ui; }
-
-void DashboardWidget::showEvent(QShowEvent *event) {
-    QWidget::showEvent(event); // 부모 클래스의 기본 동작 호출
-    this->initChart();         // 화면에 뜰 때 스스로 차트 초기화!
+DashboardWidget::~DashboardWidget() {
+    delete ui;
 }
 
-void DashboardWidget::initChart() {
-    qDebug() << "Dashboard: initChart() called!";
+void DashboardWidget::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
 
-    if (!ui->chartLayout) {
-        qCritical() << "Dashboard Error: chartLayout is null!";
+    initStorageCharts();
+    initProductionChart();
+}
+
+void DashboardWidget::clearLayout(QLayout *layout)
+{
+    if (!layout) return;
+
+    QLayoutItem *item;
+    while ((item = layout->takeAt(0)) != nullptr) {
+        delete item->widget();
+        delete item;
+    }
+}
+
+
+
+
+
+
+
+/* -----------------------------
+   창고 Pie Chart
+--------------------------------*/
+
+void DashboardWidget::initStorageCharts()
+{
+    if (!ui->storageA01ChartLayout ||
+        !ui->storageB02ChartLayout ||
+        !ui->storageC03ChartLayout) {
+
+        qCritical() << "Storage chart layouts are null";
         return;
     }
 
-    // 1. 기존 위젯 청소 (안전한 방식)
-    QLayoutItem *child;
-    while ((child = ui->chartLayout->takeAt(0)) != nullptr) {
-        if (child->widget()) {
-            delete child->widget();
-        }
-        delete child;
+    clearLayout(ui->storageA01ChartLayout);
+    clearLayout(ui->storageB02ChartLayout);
+    clearLayout(ui->storageC03ChartLayout);
+
+
+    /* ---------- 창고 A01 ---------- */
+
+    QPieSeries *seriesA = new QPieSeries();
+    seriesA->append("A-0 제품", 10);
+    seriesA->append("A-1 제품", 60);
+    seriesA->append("여유 공간", 30);
+
+    QChart *chartA = new QChart();
+    chartA->addSeries(seriesA);
+    chartA->setTitle("Storage A01");
+
+    QChartView *viewA = new QChartView(chartA);
+    viewA->setRenderHint(QPainter::Antialiasing);
+
+    ui->storageA01ChartLayout->addWidget(viewA);
+
+
+
+    /* ---------- 창고 B02 ---------- */
+
+    QPieSeries *seriesB = new QPieSeries();
+    seriesB->append("B-0 제품", 70);
+    seriesB->append("여유 공간", 30);
+
+    QChart *chartB = new QChart();
+    chartB->addSeries(seriesB);
+    chartB->setTitle("Storage B02");
+
+    QChartView *viewB = new QChartView(chartB);
+    viewB->setRenderHint(QPainter::Antialiasing);
+
+    ui->storageB02ChartLayout->addWidget(viewB);
+
+
+
+    /* ---------- 창고 C03 ---------- */
+
+    QPieSeries *seriesC = new QPieSeries();
+    seriesC->append("C-0 제품", 55);
+    seriesC->append("여유 공간", 45);
+
+    QChart *chartC = new QChart();
+    chartC->addSeries(seriesC);
+    chartC->setTitle("Storage C03");
+
+    QChartView *viewC = new QChartView(chartC);
+    viewC->setRenderHint(QPainter::Antialiasing);
+
+    ui->storageC03ChartLayout->addWidget(viewC);
+
+
+    qDebug() << "Storage charts created";
+}
+
+
+
+
+
+
+
+
+/* -----------------------------
+   생산량 Stacked Bar Chart
+--------------------------------*/
+
+void DashboardWidget::initProductionChart()
+{
+    if (!ui->prodChartLayout) {
+        qCritical() << "prodChartLayout is null";
+        return;
     }
 
-    // 2. 차트 생성
-    QLineSeries *series = new QLineSeries();
-    series->append(0, 10); series->append(1, 25); series->append(2, 15);
-    series->append(3, 30); series->append(4, 22); series->append(5, 40);
+    clearLayout(ui->prodChartLayout);
+
+
+
+    /* 제품별 데이터 */
+
+    QBarSet *productA = new QBarSet("Product A");
+    QBarSet *productB = new QBarSet("Product B");
+    QBarSet *productC = new QBarSet("Product C");
+
+    *productA << 30 << 25 << 40 << 35 << 45 << 50 << 38;
+    *productB << 20 << 18 << 22 << 25 << 28 << 30 << 26;
+    *productC << 15 << 10 << 18 << 16 << 20 << 22 << 17;
+
+
+
+    QStackedBarSeries *series = new QStackedBarSeries();
+    series->append(productA);
+    series->append(productB);
+    series->append(productC);
+
+
 
     QChart *chart = new QChart();
     chart->addSeries(series);
-    chart->setTitle("실시간 생산 현황 (MES 메인)");
-    chart->createDefaultAxes();
+    chart->setTitle("Daily Production (2026-03-01 ~ 2026-03-07)");
+    chart->setAnimationOptions(QChart::SeriesAnimations);
+
+
+
+    /* X축 날짜 */
+
+    QStringList categories;
+    categories
+        << "03-01"
+        << "03-02"
+        << "03-03"
+        << "03-04"
+        << "03-05"
+        << "03-06"
+        << "03-07";
+
+    QBarCategoryAxis *axisX = new QBarCategoryAxis();
+    axisX->append(categories);
+
+    chart->addAxis(axisX, Qt::AlignBottom);
+    series->attachAxis(axisX);
+
+
 
     QChartView *chartView = new QChartView(chart);
     chartView->setRenderHint(QPainter::Antialiasing);
 
-    // 3. 레이아웃에 추가
-    ui->chartLayout->addWidget(chartView);
 
-    // 4. 강제 업데이트 호출
-    this->update();
-    qDebug() << "Dashboard: Chart added to layout successfully.";
+
+    ui->prodChartLayout->addWidget(chartView);
+
+    qDebug() << "Production chart created";
 }
 
-void DashboardWidget::on_CompanyListBtn_clicked(){
-    emit PageChangeCompLists(2);
+
+
+
+
+
+void DashboardWidget::on_CompanyListBtn_clicked()
+{
+    emit requestPageChange(PageType::PartnerManage);
 }

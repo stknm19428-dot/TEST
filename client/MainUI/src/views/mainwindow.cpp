@@ -1,30 +1,51 @@
 ﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "base/base_page_widget.h"
 #include "login_widget.h"
-#include "dashboard_widget.h" // 추가!
+#include "dashboard_widget.h"
+#include "partner_manage_widget.h"
+#include <QDebug>
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
-    // 프로그램 시작 시 무조건 로그인 페이지를 보여주도록 명시
-    ui->stackedWidget->setCurrentWidget(ui->loginPage);
-
-    LoginWidget* login = qobject_cast<LoginWidget*>(ui->loginPage);
-    DashboardWidget* dashboard = qobject_cast<DashboardWidget*>(ui->dashBoardPage); // 캐스팅
-
-    // 웹으로 비유하면 API Gateway (Router)
-    // login_widget.ui에서 emit loginSucess시 아래 코드 실행 (Navigation)
-    connect(login, &LoginWidget::loginSuccess, this, [this](){
-        ui->stackedWidget->setCurrentWidget(ui->dashBoardPage);
-    });
-
-    // 대시보드 위젯(dashBoardPage)에서 오는 시그널을 stackedWidget의 setCurrentIndex와 연결
-    connect(ui->dashBoardPage, &DashboardWidget::PageChangeCompLists, this, [this](){
-        ui->stackedWidget->setCurrentWidget(ui->partnerManagePage); // 인덱스 번호 대신 위젯 객체로 직접 지정
-    });
+    setupNavigation();
+    moveToPage(PageType::Login);
 }
-// 에러 원인 1: 소멸자 구현 누락 해결
-MainWindow::~MainWindow()
-{
+
+MainWindow::~MainWindow() {
     delete ui;
+}
+
+void MainWindow::setupNavigation() {
+    // 위젯 캐스팅
+    auto* login = qobject_cast<BasePageWidget*>(ui->loginPage);
+    auto* dashboard = qobject_cast<BasePageWidget*>(ui->dashBoardPage);
+    auto* partnerManage = qobject_cast<BasePageWidget*>(ui->partnerManagePage);
+
+    // 모든 위젯을 리스트에 담아 한 번에 연결 (중복 코드 방지)
+    QList<BasePageWidget*> pages = {login, dashboard, partnerManage};
+
+    for (BasePageWidget* page : pages) {
+        if (page) {
+            // Signal: requestPageChange(PageType)
+            // Slot: moveToPage(PageType) -> 타입이 일치해야 합니다!
+            connect(page, &BasePageWidget::requestPageChange, this, &MainWindow::moveToPage);
+        }
+    }
+}
+
+void MainWindow::moveToPage(PageType type) {
+    switch (type) {
+    case PageType::Login:
+        ui->stackedWidget->setCurrentWidget(ui->loginPage);
+        break;
+    case PageType::Dashboard:
+        ui->stackedWidget->setCurrentWidget(ui->dashBoardPage);
+        break;
+    case PageType::PartnerManage:
+        ui->stackedWidget->setCurrentWidget(ui->partnerManagePage);
+        break;
+    }
 }

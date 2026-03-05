@@ -1,9 +1,9 @@
 #include "login_widget.h"
 #include <QDebug>
-#include "ui_login_widget.h" // 이 파일이 있어야 ui->... 를 쓸 수 있습니다.
+#include "ui_login_widget.h"
 
 LoginWidget::LoginWidget(QWidget *parent)
-    : QWidget(parent)
+    : BasePageWidget(parent)
     , ui(new Ui::LoginWidget) // 이제 Ui::LoginWidget의 크기를 알게 됩니다.
 {
     ui->setupUi(this);
@@ -22,7 +22,8 @@ void LoginWidget::on_loginBtn_clicked()
     // Web으로 비유 => HTTP Response
     if (m_authService.authenticate(user, pw)) {
         // 200 OK
-        emit loginSuccess();
+        qDebug() << "Login Success!";
+        emit requestPageChange(PageType::Dashboard);
     } else {
         qDebug() << "Login Failed";
     }
