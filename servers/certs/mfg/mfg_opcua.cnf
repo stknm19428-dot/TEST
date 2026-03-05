@@ -1,0 +1,23 @@
+[ req ]
+default_bits       = 2048
+prompt             = no
+default_md         = sha256
+distinguished_name = dn
+x509_extensions    = v3_req
+
+[ dn ]
+C  = KR
+O  = OPCUA-DEMO
+OU = MFG
+CN = MFGServer
+
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth, clientAuth
+subjectAltName = @alt_names
+
+[ alt_names ]
+URI.1 = urn:opcua:mfg
+DNS.1 = pi-240
+IP.1  = 10.10.16.208

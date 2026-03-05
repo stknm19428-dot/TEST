@@ -26,11 +26,23 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         # Services
         src/services/auth_service.h
         src/services/auth_service.cpp
+        src/services/opcua_service.h
+        src/services/opcua_service.cpp
 
         # Views
+        src/views/base/base_page_widget.h
+        src/views/base/page_types.h
+
+        src/views/base/base_page_widget.h
+        src/views/base/page_types.h
+
         src/views/mainwindow.h
         src/views/mainwindow.cpp
         src/views/mainwindow.ui
+
+        src/views/process_widget.h
+        src/views/process_widget.cpp
+        src/views/process_widget.ui
 
         src/views/login_widget.h
         src/views/login_widget.cpp
@@ -49,17 +61,11 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/views/scm_manage_widget.h
         src/views/scm_manage_widget.ui
     )
-# Define target properties for Android with Qt 6 as:
-#    set_property(TARGET MainUI APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
-#                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
-# For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
 else()
     if(ANDROID)
         add_library(MainUI SHARED
             ${PROJECT_SOURCES}
         )
-# Define properties for Android with Qt 5 after find_package() calls as:
-#    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
     else()
         add_executable(MainUI
             ${PROJECT_SOURCES}
@@ -67,14 +73,30 @@ else()
     endif()
 endif()
 
-target_include_directories(MainUI PRIVATE 
+target_include_directories(MainUI PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core
     ${CMAKE_CURRENT_SOURCE_DIR}/src/services
     ${CMAKE_CURRENT_SOURCE_DIR}/src/views
+    /usr/local/include
 )
+
+# (선택) 정적 링크에서 심볼 누락/순서 꼬임 방지용
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-as-needed")
 
 target_link_libraries(MainUI PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Charts Qt${QT_VERSION_MAJOR}::Sql)
 # target_link_libraries(MainUI PRIVATE Qt${QT_VERSION_MAJOR}::Charts Qt6::Sql)
+target_link_libraries(MainUI PRIVATE
+    Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::Charts
+    Qt${QT_VERSION_MAJOR}::Sql
+
+    /usr/local/lib/libopen62541.a # ✅ open62541 static lib
+    ssl
+    crypto
+    pthread
+    m
+    rt
+)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
@@ -82,6 +104,7 @@ target_link_libraries(MainUI PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSI
 if(${QT_VERSION} VERSION_LESS 6.1.0)
   set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.MainUI)
 endif()
+
 set_target_properties(MainUI PROPERTIES
     ${BUNDLE_ID_OPTION}
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
