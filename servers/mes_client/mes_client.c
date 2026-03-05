@@ -586,8 +586,8 @@ int main(void) {
     UA_UInt32 subM = respM.subscriptionId;
 
     /* MFG sensor (optional print off) */
-    add_mon(mfg, subM, UA_NODEID_STRING(1, "mfg/temp"), "MGF_Temp");
-    add_mon(mfg, subM, UA_NODEID_STRING(1, "mfg/hum"), "MGF_Humidity");
+    add_mon(mfg, subM, UA_NODEID_STRING(1, "mfg/temp"), "MFG_Temp");
+    add_mon(mfg, subM, UA_NODEID_STRING(1, "mfg/hum"), "MFG_Humidity");
 
     /* MFG production (if server provides these nodes) */
     add_mon(mfg, subM, UA_NODEID_STRING(1, "mfg/attempt_count"), "Attempt");
