@@ -1,4 +1,4 @@
-#include "database_manager.h"
+﻿#include "database_manager.h"
 
 DatabaseManager& DatabaseManager::instance() {
     static DatabaseManager inst;

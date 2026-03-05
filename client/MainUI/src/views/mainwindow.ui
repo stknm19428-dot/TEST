@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>720</width>
-    <height>480</height>
+    <width>1080</width>
+    <height>720</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,9 +18,10 @@
     <item>
      <widget class="QStackedWidget" name="stackedWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="LoginWidget" name="loginPage"/>
+      <widget class="TestWidget" name="testPage"/>
       <widget class="DashboardWidget" name="dashBoardPage"/>
      </widget>
     </item>
@@ -31,7 +32,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>720</width>
+     <width>1080</width>
      <height>19</height>
     </rect>
    </property>
@@ -49,6 +50,12 @@
    <class>DashboardWidget</class>
    <extends>QWidget</extends>
    <header>dashboard_widget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>TestWidget</class>
+   <extends>QWidget</extends>
+   <header>test_widget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
