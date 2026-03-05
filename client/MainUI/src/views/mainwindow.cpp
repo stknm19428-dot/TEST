@@ -7,7 +7,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->setupUi(this);
 
     // 프로그램 시작 시 무조건 로그인 페이지를 보여주도록 명시
-    ui->stackedWidget->setCurrentWidget(ui->ScmManagePage);
+    ui->stackedWidget->setCurrentWidget(ui->loginPage);
 
     LoginWidget* login = qobject_cast<LoginWidget*>(ui->loginPage);
     DashboardWidget* dashboard = qobject_cast<DashboardWidget*>(ui->dashBoardPage); // 캐스팅
