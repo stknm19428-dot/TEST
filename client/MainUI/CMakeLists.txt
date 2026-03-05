@@ -49,6 +49,10 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/views/partner_manage_widget.cpp
         src/views/partner_manage_widget.h
         src/views/partner_manage_widget.ui
+
+        src/views/logistics_schedule_dialog.h
+        src/views/logistics_schedule_dialog.cpp
+        src/views/logistics_schedule_dialog.ui
     )
 else()
     if(ANDROID)
