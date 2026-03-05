@@ -40,6 +40,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/views/dashboard_widget.cpp
         src/views/dashboard_widget.ui
 
+        src/views/process_widget.h
+        src/views/process_widget.cpp
+        src/views/process_widget.ui
 
         src/views/partner_manage_widget.cpp
         src/views/partner_manage_widget.h
