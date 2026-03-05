@@ -34,6 +34,10 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/views/mainwindow.cpp
         src/views/mainwindow.ui
 
+        src/views/process_widget.h
+        src/views/process_widget.cpp
+        src/views/process_widget.ui
+
         src/views/login_widget.h
         src/views/login_widget.cpp
         src/views/login_widget.ui
@@ -69,6 +73,8 @@ target_include_directories(MainUI PRIVATE
 # (선택) 정적 링크에서 심볼 누락/순서 꼬임 방지용
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-as-needed")
 
+target_link_libraries(MainUI PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Charts Qt${QT_VERSION_MAJOR}::Sql)
+# target_link_libraries(MainUI PRIVATE Qt${QT_VERSION_MAJOR}::Charts Qt6::Sql)
 target_link_libraries(MainUI PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Charts
