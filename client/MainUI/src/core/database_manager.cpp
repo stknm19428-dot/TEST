@@ -11,7 +11,7 @@ bool DatabaseManager::connect() {
     }
 
     m_db = QSqlDatabase::addDatabase("QMYSQL");
-    m_db.setHostName("localhost");
+    m_db.setHostName("10.10.16.207");
     m_db.setDatabaseName("Smart_MES_Core");
     m_db.setUserName("admin");
     m_db.setPassword("pw1234");
