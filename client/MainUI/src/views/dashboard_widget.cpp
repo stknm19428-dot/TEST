@@ -1,4 +1,4 @@
-#include "dashboard_widget.h"
+﻿#include "dashboard_widget.h"
 #include "ui_dashboard_widget.h"
 #include <QVBoxLayout>
 
@@ -50,4 +50,8 @@ void DashboardWidget::initChart() {
     // 4. 강제 업데이트 호출
     this->update();
     qDebug() << "Dashboard: Chart added to layout successfully.";
+}
+
+void DashboardWidget::on_CompanyListBtn_clicked(){
+    emit PageChangeCompLists(2);
 }

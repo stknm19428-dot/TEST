@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+﻿cmake_minimum_required(VERSION 3.16)
 
 project(MainUI VERSION 0.1 LANGUAGES CXX)
 
@@ -39,6 +39,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/views/dashboard_widget.h
         src/views/dashboard_widget.cpp
         src/views/dashboard_widget.ui
+        src/views/test_widget.h src/views/test_widget.cpp src/views/test_widget.ui
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET MainUI APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
