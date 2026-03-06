@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DeliveryDialog</class>
+ <widget class="QDialog" name="deliveryDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1080</width>
+    <height>720</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Delivery Order</string>
+  </property>
+  <widget class="QLabel" name="title_label">
+   <property name="geometry">
+    <rect>
+     <x>320</x>
+     <y>70</y>
+     <width>200</width>
+     <height>30</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Delivery Order</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="product_label">
+   <property name="geometry">
+    <rect>
+     <x>90</x>
+     <y>250</y>
+     <width>100</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Product</string>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="product_combo">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>250</y>
+     <width>200</width>
+     <height>22</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="company_label">
+   <property name="geometry">
+    <rect>
+     <x>90</x>
+     <y>300</y>
+     <width>100</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Customer</string>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="company_combo">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>300</y>
+     <width>200</width>
+     <height>22</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="stock_label">
+   <property name="geometry">
+    <rect>
+     <x>90</x>
+     <y>350</y>
+     <width>100</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Quantity</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="stock_edit">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>350</y>
+     <width>200</width>
+     <height>22</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="confirm_button">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>500</y>
+     <width>80</width>
+     <height>30</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Confirm</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="cancel_button">
+   <property name="geometry">
+    <rect>
+     <x>320</x>
+     <y>500</y>
+     <width>80</width>
+     <height>30</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Cancel</string>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
