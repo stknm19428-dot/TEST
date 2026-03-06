@@ -19,9 +19,13 @@ public:
     ~ScmManageWidget();
 
 private slots:
+<<<<<<< Updated upstream
     void on_Back_btn_clicked();
     void on_create_order_button_clicked();
     void on_cancel_order_button_clicked();
+=======
+    void on_pushButton_clicked();
+>>>>>>> Stashed changes
 
 private:
     Ui::ScmManageWidget *ui;

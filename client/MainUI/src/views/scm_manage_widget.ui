@@ -102,17 +102,29 @@
     </item>
    </layout>
   </widget>
+<<<<<<< Updated upstream
   <widget class="QPushButton" name="Back_btn">
    <property name="geometry">
     <rect>
      <x>10</x>
      <y>0</y>
+=======
+  <widget class="QPushButton" name="pushButton">
+   <property name="geometry">
+    <rect>
+     <x>930</x>
+     <y>590</y>
+>>>>>>> Stashed changes
      <width>80</width>
      <height>22</height>
     </rect>
    </property>
    <property name="text">
+<<<<<<< Updated upstream
     <string>Back</string>
+=======
+    <string>Order Edit</string>
+>>>>>>> Stashed changes
    </property>
   </widget>
  </widget>

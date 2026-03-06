@@ -6,10 +6,15 @@ OrderEditDialog::OrderEditDialog(QWidget *parent) :
     ui(new Ui::OrderEditDialog)
 {
     ui->setupUi(this);
+
+    timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, &OrderEditDialog::updateDateTime);
+    timer->start(1000); // 1000ms = 1s
+
+    updateDateTime();
 }
 
 void OrderEditDialog::loadInventoryList() {
-    // DB에서 아이템 코드와 이름을 조회
     QSqlQuery query("SELECT item_code, item_name FROM inventory");
 
     ui->comboItemName->clear(); // 초기화
@@ -25,6 +30,19 @@ void OrderEditDialog::loadInventoryList() {
         // 나중에 INSERT 쿼리에서 쓸 itemCode를 데이터로 함께 저장
         ui->comboItemName->addItem(displayText, itemCode);
     }
+}
+
+QString OrderEditDialog::getSelectedItemCode() const {
+    return ui->comboItemName->currentData().toString();
+}
+
+int OrderEditDialog::getOrderAmount() const {
+    return ui->spinAmount->value();
+}
+
+void OrderEditDialog::updateDateTime(){
+    QString currentTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
+    ui->labelCurrentTime->setText(currentTime);
 }
 
 OrderEditDialog::~OrderEditDialog()

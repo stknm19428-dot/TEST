@@ -5,6 +5,9 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlError>
+#include <QTimer>
+#include <QDateTime>
+
 
 namespace Ui {
 class OrderEditDialog;
@@ -18,10 +21,17 @@ public:
     explicit OrderEditDialog(QWidget *parent = nullptr);
     ~OrderEditDialog();
 
+    void loadInventoryList();
+    QString getSelectedItemCode() const;
+    int getOrderAmount() const;
+
+private slots:
+    void updateDateTime();
+
 private:
     Ui::OrderEditDialog *ui;
 
-    void loadInventoryList();
+    QTimer *timer;
 };
 
 #endif // ORDER_EDIT_DIALOG_H

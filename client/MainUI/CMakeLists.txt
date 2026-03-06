@@ -34,12 +34,16 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
 
         src/services/partner_manage_service.h
         src/services/partner_manage_service.cpp
+        src/services/scm_manage_service.h
+        src/services/scm_manage_service.cpp
 
         src/services/delivery_service.cpp
         src/services/delivery_service.h
 
         # Models
         src/models/company_model.h
+        src/models/inventory_model.h
+        src/models/inventory_order_logs_model.h
 
         # Views
         src/views/base/base_page_widget.h
@@ -84,6 +88,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/views/logistics_schedule_dialog.h
         src/views/logistics_schedule_dialog.cpp
         src/views/logistics_schedule_dialog.ui
+        src/views/order_edit_dialog.ui
+        src/views/order_edit_dialog.cpp
+        src/views/order_edit_dialog.h
     )
 else()
     if(ANDROID)
