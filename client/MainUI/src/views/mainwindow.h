@@ -4,7 +4,13 @@
 #include <QMainWindow>
 #include "base/page_types.h" // 1. 이 헤더가 반드시 포함되어야 합니다!
 #include "opcua_service.h"
-
+//========================
+//
+//=========================
+#include "auth_service.h"   // ✅ 추가
+//========================
+//
+//=========================
 
 
 QT_BEGIN_NAMESPACE
@@ -22,6 +28,13 @@ private:
     Ui::MainWindow *ui;
 
     OpcUaService* ua = nullptr;
+    //========================
+    //
+    //=========================
+    AuthService m_authService;   // ✅ 추가
+    //========================
+    //
+    //=========================
     bool uaStarted = false;
     void startOpcUaOnce();
 

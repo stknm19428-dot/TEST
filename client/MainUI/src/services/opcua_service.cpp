@@ -3,6 +3,10 @@
 #include <QMetaObject>
 #include <QFile>
 #include <QDebug>
+#include <QTimer>
+#include <QMutex>
+#include <QDateTime>
+#include <QMutexLocker>
 #include <utility>
 
 static UA_ByteString loadFileBytes(const QString &path) {
@@ -62,6 +66,20 @@ static const char *LOG_WH_LOW[3]       = {"log/wh1/low_stock","log/wh2/low_stock
 static const char *LOG_MOVE_M          = "log/Move";
 static const char *LOG_STOPMOVE_M      = "log/StopMove";
 static const char *LOG_CONSUME_M       = "log/Consume";
+// MFG AUTH
+static const char *MFG_AUTH_REQ_ID       = "mfg/auth/request_id";
+static const char *MFG_AUTH_REQ_PW       = "mfg/auth/request_pw";
+static const char *MFG_AUTH_REQ_PENDING  = "mfg/auth/request_pending";
+static const char *MFG_AUTH_RESULT_OK    = "mfg/auth/result_ok";
+static const char *MFG_AUTH_RESULT_DONE  = "mfg/auth/result_done";
+
+// LOG AUTH
+static const char *LOG_AUTH_REQ_ID       = "log/auth/request_id";
+static const char *LOG_AUTH_REQ_PW       = "log/auth/request_pw";
+static const char *LOG_AUTH_REQ_PENDING  = "log/auth/request_pending";
+static const char *LOG_AUTH_RESULT_OK    = "log/auth/result_ok";
+static const char *LOG_AUTH_RESULT_DONE  = "log/auth/result_done";
+
 
 // tag struct for monitored items
 enum class TagKind {
@@ -77,6 +95,8 @@ enum class TagKind {
     WH_LOADED_1,  WH_LOADED_2,  WH_LOADED_3,
     WH_QTY_1,     WH_QTY_2,     WH_QTY_3,
     WH_LOW_1,     WH_LOW_2,     WH_LOW_3,
+    MFG_AUTH_PENDING,
+    LOG_AUTH_PENDING,
 };
 
 struct MonTag {
@@ -116,17 +136,39 @@ public slots:
     void connectMfg(QString endpoint, QString user, QString pass,
                     QString clientCertDer, QString clientKeyDer, QString trustServerDer) {
         QMutexLocker lk(&mu);
+
+        mfg.endpoint = endpoint;
+        mfg.user = user;
+        mfg.pass = pass;
+        mfg.clientCertPath = clientCertDer;
+        mfg.clientKeyPath = clientKeyDer;
+        mfg.trustSrvPath = trustServerDer;
+        mfg.reconnectEnabled = true;
+
         connectOne(mfg, endpoint, user, pass, clientCertDer, clientKeyDer, trustServerDer, true);
     }
 
     void connectLog(QString endpoint, QString user, QString pass,
                     QString clientCertDer, QString clientKeyDer, QString trustServerDer) {
         QMutexLocker lk(&mu);
+
+        log.endpoint = endpoint;
+        log.user = user;
+        log.pass = pass;
+        log.clientCertPath = clientCertDer;
+        log.clientKeyPath = clientKeyDer;
+        log.trustSrvPath = trustServerDer;
+        log.reconnectEnabled = true;
+
         connectOne(log, endpoint, user, pass, clientCertDer, clientKeyDer, trustServerDer, false);
     }
 
     void disconnectAll() {
         QMutexLocker lk(&mu);
+
+        mfg.reconnectEnabled = false;
+        log.reconnectEnabled = false;
+
         disconnectOneGraceful(mfg, true);
         disconnectOneGraceful(log, false);
     }
@@ -148,7 +190,7 @@ public slots:
             emit errorOccurred("mfgWriteSpeed", "write failed: " + sc(rc));
     }
 
-    void mfgStartOrder(QString orderId) {
+    void mfgStartOrder(const QString &orderId, quint16 productNo, quint32 qty) {
         QMutexLocker lk(&mu);
         if(!mfg.client || !mfg.connected) {
             emit errorOccurred("mfgStartOrder", "MFG not connected");
@@ -160,15 +202,24 @@ public slots:
         s.length = (size_t)ba.size();
         s.data = (UA_Byte*)ba.data();
 
-        UA_Variant in;
-        UA_Variant_init(&in);
-        UA_Variant_setScalar(&in, &s, &UA_TYPES[UA_TYPES_STRING]);
+        UA_UInt16 p = (UA_UInt16)productNo;
+        UA_UInt32 q = (UA_UInt32)qty;
+
+        UA_Variant in[3];
+        UA_Variant_init(&in[0]);
+        UA_Variant_init(&in[1]);
+        UA_Variant_init(&in[2]);
+
+        UA_Variant_setScalar(&in[0], &s, &UA_TYPES[UA_TYPES_STRING]);
+        UA_Variant_setScalar(&in[1], &p, &UA_TYPES[UA_TYPES_UINT16]);
+        UA_Variant_setScalar(&in[2], &q, &UA_TYPES[UA_TYPES_UINT32]);
 
         UA_StatusCode rc = UA_Client_call(mfg.client,
                                           UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER),
                                           nid(MFG_STARTORDER_M),
-                                          1, &in,
+                                          3, in,
                                           0, nullptr);
+
         if(rc != UA_STATUSCODE_GOOD)
             emit errorOccurred("mfgStartOrder", "call failed: " + sc(rc));
     }
@@ -286,6 +337,48 @@ public slots:
             emit errorOccurred("logConsume", "call failed: " + sc(rc));
     }
 
+    void mfgSendAuthResult(bool ok) {
+        QMutexLocker lk(&mu);
+        if(!mfg.client || !mfg.connected) {
+            emit errorOccurred("mfgSendAuthResult", "MFG not connected");
+            return;
+        }
+
+        UA_Boolean bOk = ok ? true : false;
+        UA_Boolean bDone = true;
+        UA_Boolean bPending = false;
+
+        UA_Variant vOk, vDone, vPending;
+        UA_Variant_setScalar(&vOk, &bOk, &UA_TYPES[UA_TYPES_BOOLEAN]);
+        UA_Variant_setScalar(&vDone, &bDone, &UA_TYPES[UA_TYPES_BOOLEAN]);
+        UA_Variant_setScalar(&vPending, &bPending, &UA_TYPES[UA_TYPES_BOOLEAN]);
+
+        UA_Client_writeValueAttribute(mfg.client, nid(MFG_AUTH_RESULT_OK), &vOk);
+        UA_Client_writeValueAttribute(mfg.client, nid(MFG_AUTH_RESULT_DONE), &vDone);
+        UA_Client_writeValueAttribute(mfg.client, nid(MFG_AUTH_REQ_PENDING), &vPending);
+    }
+
+    void logSendAuthResult(bool ok) {
+        QMutexLocker lk(&mu);
+        if(!log.client || !log.connected) {
+            emit errorOccurred("logSendAuthResult", "LOG not connected");
+            return;
+        }
+
+        UA_Boolean bOk = ok ? true : false;
+        UA_Boolean bDone = true;
+        UA_Boolean bPending = false;
+
+        UA_Variant vOk, vDone, vPending;
+        UA_Variant_setScalar(&vOk, &bOk, &UA_TYPES[UA_TYPES_BOOLEAN]);
+        UA_Variant_setScalar(&vDone, &bDone, &UA_TYPES[UA_TYPES_BOOLEAN]);
+        UA_Variant_setScalar(&vPending, &bPending, &UA_TYPES[UA_TYPES_BOOLEAN]);
+
+        UA_Client_writeValueAttribute(log.client, nid(LOG_AUTH_RESULT_OK), &vOk);
+        UA_Client_writeValueAttribute(log.client, nid(LOG_AUTH_RESULT_DONE), &vDone);
+        UA_Client_writeValueAttribute(log.client, nid(LOG_AUTH_REQ_PENDING), &vPending);
+    }
+
 private slots:
     void finalizeDropMfg() { finalizeDrop(mfg, true); }
     void finalizeDropLog() { finalizeDrop(log, false); }
@@ -314,6 +407,9 @@ signals:
     void logWhQtyUpdated(int wh1to3, quint32 qty);
     void logWhLowStockUpdated(int wh1to3, bool low);
 
+    void mfgAuthRequestReceived(const QString &id, const QString &pw);
+    void logAuthRequestReceived(const QString &id, const QString &pw);
+
     void errorOccurred(const QString &where, const QString &msg);
     void info(const QString &msg);
 
@@ -321,7 +417,13 @@ private:
     struct Conn {
         UA_Client *client = nullptr;
         UA_UInt32 subId = 0;
+
         QString endpoint;
+        QString user;
+        QString pass;
+        QString clientCertPath;
+        QString clientKeyPath;
+        QString trustSrvPath;
 
         UA_ByteString clientCert = UA_BYTESTRING_NULL;
         UA_ByteString clientKey  = UA_BYTESTRING_NULL;
@@ -329,6 +431,10 @@ private:
 
         bool pendingDrop = false;
         bool connected = false;
+
+        bool reconnectEnabled = false;
+        qint64 lastRetryMs = 0;
+        int retryIntervalMs = 3000;   // 3초마다 재시도
 
         QList<MonTag*> tags;
     };
@@ -350,6 +456,10 @@ private:
     Conn log;
     QList<QuarantinedConn> garbage;
 
+    static qint64 nowMs() {
+        return QDateTime::currentMSecsSinceEpoch();
+    }
+
     static void moveByteString(UA_ByteString &dst, UA_ByteString &src) {
         dst = src;
         src = UA_BYTESTRING_NULL;
@@ -364,6 +474,42 @@ private:
         if(v < 0.0) return 0.0;
         if(v > 100.0) return 100.0;
         return v;
+    }
+
+    static QString readStringNode(UA_Client *client, const char *nodeId) {
+        if(!client) return {};
+
+        UA_Variant v;
+        UA_Variant_init(&v);
+
+        QString out;
+        UA_StatusCode rc = UA_Client_readValueAttribute(client, nid(nodeId), &v);
+        if(rc == UA_STATUSCODE_GOOD &&
+            UA_Variant_hasScalarType(&v, &UA_TYPES[UA_TYPES_STRING])) {
+            UA_String s = *static_cast<UA_String*>(v.data);
+            out = QString::fromUtf8((const char*)s.data, (int)s.length);
+        }
+
+        UA_Variant_clear(&v);
+        return out;
+    }
+
+    void emitMfgAuthRequest() {
+        QTimer::singleShot(50, this, [this]() {
+            QString id = readStringNode(mfg.client, MFG_AUTH_REQ_ID);
+            QString pw = readStringNode(mfg.client, MFG_AUTH_REQ_PW);
+            emit info(QString("[AUTH][MFG] delayed read id=[%1] pw=[%2]").arg(id, pw));
+            emit mfgAuthRequestReceived(id, pw);
+        });
+    }
+
+    void emitLogAuthRequest() {
+        QTimer::singleShot(50, this, [this]() {
+            QString id = readStringNode(log.client, LOG_AUTH_REQ_ID);
+            QString pw = readStringNode(log.client, LOG_AUTH_REQ_PW);
+            emit info(QString("[AUTH][LOG] delayed read id=[%1] pw=[%2]").arg(id, pw));
+            emit logAuthRequestReceived(id, pw);
+        });
     }
 
     void quarantineConn(Conn &c, bool isMfg) {
@@ -381,7 +527,6 @@ private:
         q.tags = std::move(c.tags);
 
         c.subId = 0;
-        c.endpoint.clear();
         c.pendingDrop = false;
 
         bool wasConnected = c.connected;
@@ -436,6 +581,7 @@ private:
             return;
         }
 
+
         // Double
         if(UA_Variant_hasScalarType(&value->value, &UA_TYPES[UA_TYPES_DOUBLE])) {
             double v = *static_cast<double*>(value->value.data);
@@ -479,10 +625,19 @@ private:
             return;
         }
 
+
         // Bool
         if(UA_Variant_hasScalarType(&value->value, &UA_TYPES[UA_TYPES_BOOLEAN])) {
             bool b = (*static_cast<UA_Boolean*>(value->value.data)) ? true : false;
 
+            if(tag->kind == TagKind::MFG_AUTH_PENDING) {
+                if(b) self->emitMfgAuthRequest();
+                return;
+            }
+            if(tag->kind == TagKind::LOG_AUTH_PENDING) {
+                if(b) self->emitLogAuthRequest();
+                return;
+            }
             switch(tag->kind) {
             case TagKind::WH_LOADING_1: emit self->logWhLoadingUpdated(1, b); break;
             case TagKind::WH_LOADING_2: emit self->logWhLoadingUpdated(2, b); break;
@@ -537,6 +692,34 @@ private:
             emit errorOccurred("LOG", "server disconnected: " + logErr);
             QMetaObject::invokeMethod(this, "finalizeDropLog", Qt::QueuedConnection);
         }
+
+        // ✅ 자동 재접속
+        {
+            QMutexLocker lk(&mu);
+            qint64 now = nowMs();
+
+            if(!mfg.client && !mfg.connected && mfg.reconnectEnabled) {
+                if(now - mfg.lastRetryMs >= mfg.retryIntervalMs) {
+                    mfg.lastRetryMs = now;
+                    emit info("Retrying MFG connection...");
+                    connectOne(mfg,
+                               mfg.endpoint, mfg.user, mfg.pass,
+                               mfg.clientCertPath, mfg.clientKeyPath, mfg.trustSrvPath,
+                               true);
+                }
+            }
+
+            if(!log.client && !log.connected && log.reconnectEnabled) {
+                if(now - log.lastRetryMs >= log.retryIntervalMs) {
+                    log.lastRetryMs = now;
+                    emit info("Retrying LOG connection...");
+                    connectOne(log,
+                               log.endpoint, log.user, log.pass,
+                               log.clientCertPath, log.clientKeyPath, log.trustSrvPath,
+                               false);
+                }
+            }
+        }
     }
 
     void cleanup() {
@@ -557,7 +740,6 @@ private:
         UA_Client *client = c.client;
         c.client = nullptr;
         c.subId = 0;
-        c.endpoint.clear();
         c.pendingDrop = false;
 
         bool wasConnected = c.connected;
@@ -596,7 +778,6 @@ private:
             c.pendingDrop = false;
             c.client = nullptr;
             c.subId = 0;
-            c.endpoint.clear();
             if(isMfg) emit mfgConnectedChanged(false);
             else emit logConnectedChanged(false);
             return;
@@ -624,8 +805,6 @@ private:
             c.pendingDrop = false;
             c.client = nullptr;
             c.subId = 0;
-            c.endpoint.clear();
-
             if(isMfg) emit mfgConnectedChanged(false);
             else emit logConnectedChanged(false);
             return;
@@ -655,7 +834,6 @@ private:
             c.pendingDrop = false;
             c.client = nullptr;
             c.subId = 0;
-            c.endpoint.clear();
 
             if(isMfg) emit mfgConnectedChanged(false);
             else emit logConnectedChanged(false);
@@ -686,7 +864,6 @@ private:
             c.pendingDrop = false;
             c.client = nullptr;
             c.subId = 0;
-            c.endpoint.clear();
 
             if(isMfg) emit mfgConnectedChanged(false);
             else emit logConnectedChanged(false);
@@ -733,6 +910,7 @@ private:
             addMon(c, nid(MFG_ATTEMPT_COUNT), TagKind::MFG_ATTEMPT_COUNT);
             addMon(c, nid(MFG_DEFECT_RATE),   TagKind::MFG_DEFECT_RATE);
             addMon(c, nid(MFG_DEFECT_CODE),   TagKind::MFG_DEFECT_CODE);
+            addMon(c, nid(MFG_AUTH_REQ_PENDING), TagKind::MFG_AUTH_PENDING);
         } else {
             addMon(c, nid(LOG_STATUS), TagKind::LOG_STATUS);
             addMon(c, nid(LOG_TEMP),   TagKind::LOG_TEMP);
@@ -757,6 +935,7 @@ private:
             addMon(c, nid(LOG_WH_LOW[0]),     TagKind::WH_LOW_1);
             addMon(c, nid(LOG_WH_LOW[1]),     TagKind::WH_LOW_2);
             addMon(c, nid(LOG_WH_LOW[2]),     TagKind::WH_LOW_3);
+            addMon(c, nid(LOG_AUTH_REQ_PENDING), TagKind::LOG_AUTH_PENDING);
         }
     }
 
@@ -813,6 +992,9 @@ OpcUaService::OpcUaService(QObject *parent) : QObject(parent) {
     connect(m_worker, &Worker::logWhLoadedUpdated, this, &OpcUaService::logWhLoadedUpdated);
     connect(m_worker, &Worker::logWhQtyUpdated, this, &OpcUaService::logWhQtyUpdated);
     connect(m_worker, &Worker::logWhLowStockUpdated, this, &OpcUaService::logWhLowStockUpdated);
+
+    connect(m_worker, &Worker::mfgAuthRequestReceived, this, &OpcUaService::mfgAuthRequestReceived);
+    connect(m_worker, &Worker::logAuthRequestReceived, this, &OpcUaService::logAuthRequestReceived);
 
     connect(m_worker, &Worker::errorOccurred, this, &OpcUaService::errorOccurred);
     connect(m_worker, &Worker::info, this, &OpcUaService::info);
@@ -873,10 +1055,12 @@ void OpcUaService::mfgWriteSpeed(double speedPercent) {
                               Q_ARG(double, speedPercent));
 }
 
-void OpcUaService::mfgStartOrder(const QString &orderId) {
+void OpcUaService::mfgStartOrder(const QString &orderId, quint16 productNo, quint32 qty) {
     start();
     QMetaObject::invokeMethod(m_worker, "mfgStartOrder", Qt::QueuedConnection,
-                              Q_ARG(QString, orderId));
+                              Q_ARG(QString, orderId),
+                              Q_ARG(quint16, productNo),
+                              Q_ARG(quint32, qty));
 }
 
 void OpcUaService::mfgStopOrder() {
@@ -909,6 +1093,18 @@ void OpcUaService::logConsume(int wh1to3, quint32 qty) {
     QMetaObject::invokeMethod(m_worker, "logConsume", Qt::QueuedConnection,
                               Q_ARG(int, wh1to3),
                               Q_ARG(quint32, qty));
+}
+
+void OpcUaService::mfgSendAuthResult(bool ok) {
+    start();
+    QMetaObject::invokeMethod(m_worker, "mfgSendAuthResult", Qt::QueuedConnection,
+                              Q_ARG(bool, ok));
+}
+
+void OpcUaService::logSendAuthResult(bool ok) {
+    start();
+    QMetaObject::invokeMethod(m_worker, "logSendAuthResult", Qt::QueuedConnection,
+                              Q_ARG(bool, ok));
 }
 
 #include "opcua_service.moc"

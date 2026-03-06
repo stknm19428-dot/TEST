@@ -10,19 +10,44 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
-    //===========================================
-    //start
-    //===========================================
     ua = new OpcUaService(this);
-    //===========================================
-    //end
-    //===========================================
+
+    // =====================================================
+    // ✅ 서버(MFG)가 보낸 로그인 요청 처리
+    // =====================================================
+    connect(ua, &OpcUaService::mfgAuthRequestReceived, this,
+            [this](const QString &id, const QString &pw){
+                bool ok = m_authService.checkServerAccount("MFG", id, pw);
+
+                qDebug() << "[MES] MFG auth request:"
+                         << "id =" << id
+                         << "result =" << ok;
+
+                ua->mfgSendAuthResult(ok);
+            });
+
+    // =====================================================
+    // ✅ 서버(LOG)가 보낸 로그인 요청 처리
+    // =====================================================
+    connect(ua, &OpcUaService::logAuthRequestReceived, this,
+            [this](const QString &id, const QString &pw){
+                bool ok = m_authService.checkServerAccount("LOG", id, pw);
+
+                qDebug() << "[MES] LOG auth request:"
+                         << "id =" << id
+                         << "result =" << ok;
+
+                ua->logSendAuthResult(ok);
+            });
+    // =====================================================
+    // ✅ 서버(LOG)가 보낸 로그인 요청 처리
+    // =====================================================
+
+
+
 
     setupNavigation();
     moveToPage(PageType::Login);
-    //===========================================
-    //start
-    //===========================================
     auto* login = qobject_cast<LoginWidget*>(ui->loginPage);
     if (login) {
         // ✅ 로그인 성공 “딱 한번”만 통신 시작
@@ -51,19 +76,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     }
 
-    //===========================================
-    //end
-    //===========================================
-
 
 }
 
 MainWindow::~MainWindow() {
     delete ui;
 }
-//===========================================
-//
-//===========================================
+
 void MainWindow::startOpcUaOnce()
 {
     qDebug() << QFile::exists("/home/pi/MES/servers/certs/mfg/cert.der");
@@ -88,9 +107,7 @@ void MainWindow::startOpcUaOnce()
 
 
 }
-//===========================================
-//
-//===========================================
+
 
 void MainWindow::setupNavigation() {
     // 위젯 캐스팅

@@ -42,7 +42,7 @@ public:
 
     // ---- MFG commands ----
     Q_INVOKABLE void mfgWriteSpeed(double speedPercent);    // mfg/conveyor_speed
-    Q_INVOKABLE void mfgStartOrder(const QString &orderId); // mfg/StartOrder
+    Q_INVOKABLE void mfgStartOrder(const QString &orderId, quint16 productNo, quint32 qty);
     Q_INVOKABLE void mfgStopOrder();                        // mfg/StopOrder
 
     // ---- LOG commands ----
@@ -50,6 +50,9 @@ public:
     Q_INVOKABLE void logMove(int wh1to3, quint32 qty);                // log/Move(wh:uint16, qty:uint32)
     Q_INVOKABLE void logStopMove();                                   // log/StopMove()
     Q_INVOKABLE void logConsume(int wh1to3, quint32 qty);             // log/Consume(wh:uint16, qty:uint32)
+    // ✅ 서버 로그인 결과 회신
+    void mfgSendAuthResult(bool ok);
+    void logSendAuthResult(bool ok);
 
 signals:
     void mfgConnectedChanged(bool connected);
@@ -77,6 +80,10 @@ signals:
     void logWhLoadedUpdated(int wh1to3, bool loaded);
     void logWhQtyUpdated(int wh1to3, quint32 qty);
     void logWhLowStockUpdated(int wh1to3, bool low);
+
+    // ✅ 서버가 보낸 로그인 요청
+    void mfgAuthRequestReceived(const QString &id, const QString &pw);
+    void logAuthRequestReceived(const QString &id, const QString &pw);
 
     void errorOccurred(const QString &where, const QString &msg);
     void info(const QString &msg);
