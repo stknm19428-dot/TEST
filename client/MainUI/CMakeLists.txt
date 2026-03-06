@@ -36,6 +36,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/services/partner_manage_service.cpp
         src/services/scm_manage_service.h
         src/services/scm_manage_service.cpp
+        src/services/manufacture_manage_service.h
+        src/services/manufacture_manage_service.cpp
 
         src/services/delivery_service.cpp
         src/services/delivery_service.h
@@ -91,6 +93,10 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/views/order_edit_dialog.ui
         src/views/order_edit_dialog.cpp
         src/views/order_edit_dialog.h
+
+        src/views/produce_add_dialog.cpp
+        src/views/produce_add_dialog.h
+        src/views/produce_add_dialog.ui
     )
 else()
     if(ANDROID)
