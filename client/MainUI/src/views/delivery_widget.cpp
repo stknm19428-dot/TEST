@@ -1,5 +1,6 @@
 #include "delivery_widget.h"
 #include "ui_delivery_widget.h"
+#include "../services/delivery_service.h"
 
 DeliveryWidget::DeliveryWidget(QWidget *parent)
     : BasePageWidget(parent)
@@ -32,38 +33,20 @@ void DeliveryWidget::setupTableConfigs()
 
 void DeliveryWidget::loadDeliveryData()
 {
-    QSqlDatabase db = QSqlDatabase::database();
-    if (!db.isOpen()) {
-        qDebug() << "Delivery: 데이터베이스가 열려있지 않습니다.";
-        return;
-    }
-
-    // 최신순 정렬
-    QSqlQuery query(
-        "SELECT d.id, c.company_name, p.product_name, d.delivery_stock, "
-        "d.status, d.created_at, d.updated_at "
-        "FROM product_deli_logs d "
-        "LEFT JOIN cust_company c ON d.company_id = c.id "
-        "LEFT JOIN product p ON d.product_id = p.id "
-        "ORDER BY d.created_at DESC", db);
-
-    if (!query.exec()) {
-        qDebug() << "납품 조회 에러:" << query.lastError().text();
-        return;
-    }
+    auto deliveries = DeliveryService::getDeliveries();
 
     ui->delivery_table->setRowCount(0);
     int row = 0;
-    while (query.next()) {
+    for (const auto &d : deliveries) {
         ui->delivery_table->insertRow(row);
-        ui->delivery_table->setItem(row, 0, new QTableWidgetItem(query.value("company_name").toString()));
-        ui->delivery_table->setItem(row, 1, new QTableWidgetItem(query.value("product_name").toString()));
-        ui->delivery_table->setItem(row, 2, new QTableWidgetItem(query.value("delivery_stock").toString()));
-        ui->delivery_table->setItem(row, 3, new QTableWidgetItem(query.value("status").toString()));
-        ui->delivery_table->setItem(row, 4, new QTableWidgetItem(query.value("created_at").toString()));
-        ui->delivery_table->setItem(row, 5, new QTableWidgetItem(query.value("updated_at").toString()));
+        ui->delivery_table->setItem(row, 0, new QTableWidgetItem(d.company_name));
+        ui->delivery_table->setItem(row, 1, new QTableWidgetItem(d.product_name));
+        ui->delivery_table->setItem(row, 2, new QTableWidgetItem(QString::number(d.delivery_stock)));
+        ui->delivery_table->setItem(row, 3, new QTableWidgetItem(d.status));
+        ui->delivery_table->setItem(row, 4, new QTableWidgetItem(d.created_at));
+        ui->delivery_table->setItem(row, 5, new QTableWidgetItem(d.updated_at));
         // 숨겨진 id 컬럼에 저장 (Complete 기능에 사용)
-        ui->delivery_table->setItem(row, 6, new QTableWidgetItem(query.value("id").toString()));
+        ui->delivery_table->setItem(row, 6, new QTableWidgetItem(d.id));
         row++;
     }
     qDebug() << "총" << row << "개의 납품 항목을 불러왔습니다.";
@@ -99,22 +82,7 @@ void DeliveryWidget::on_complete_delivery_button_clicked()
     // 숨겨진 컬럼에서 id 가져오기
     QString selected_id = ui->delivery_table->item(row, 6)->text();
 
-    // DB 연결 확인
-    QSqlDatabase db = QSqlDatabase::database();
-    if (!db.isOpen()) {
-        qDebug() << "DB 연결이 열려있지 않습니다.";
-        return;
-    }
-
-    // status를 DONE으로 업데이트
-    QSqlQuery query(db);
-    query.prepare("UPDATE product_deli_logs SET status = 'DONE', updated_at = NOW() WHERE id = :id");
-    query.bindValue(":id", selected_id);
-
-    if (query.exec()) {
-        qDebug() << "[납품 완료 처리 성공]" << selected_id;
+    if (DeliveryService::completeDelivery(selected_id)) {
         loadDeliveryData(); // 테이블 새로고침
-    } else {
-        qDebug() << "[납품 완료 처리 실패]" << query.lastError().text();
     }
 }
