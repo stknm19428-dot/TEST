@@ -1,0 +1,21 @@
+[ req ]
+default_bits       = 2048
+prompt             = no
+default_md         = sha256
+distinguished_name = dn
+x509_extensions    = v3_req
+
+[ dn ]
+C  = KR
+O  = OPCUA-DEMO
+OU = MES
+CN = MESClient
+
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = clientAuth
+subjectAltName = @alt_names
+
+[ alt_names ]
+URI.1 = urn:opcua:mes
