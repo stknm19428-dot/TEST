@@ -54,12 +54,12 @@ MainWindow::MainWindow(QWidget *parent)
         connect(login, &LoginWidget::loginSuccess, this, [this](){
             startOpcUaOnce();
         });
-        connect(ua, &OpcUaService::mfgTempUpdated, this, [](double temp){
-            qDebug() << "MFG TEMP =" << temp;
-        });
-        connect(ua, &OpcUaService::mfgHumUpdated, this, [](double hum){
-            qDebug() << "MFG HUM =" << hum;
-        });
+        // connect(ua, &OpcUaService::mfgTempUpdated, this, [](double temp){
+        //     qDebug() << "MFG TEMP =" << temp;
+        // });
+        // connect(ua, &OpcUaService::mfgHumUpdated, this, [](double hum){
+        //     qDebug() << "MFG HUM =" << hum;
+        // });
 
         connect(ua, &OpcUaService::mfgSpeedUpdated, this, [](double speed){
             qDebug() << "MFG SPEED =" << speed;

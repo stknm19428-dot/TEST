@@ -79,6 +79,11 @@ static const char *LOG_AUTH_REQ_PW       = "log/auth/request_pw";
 static const char *LOG_AUTH_REQ_PENDING  = "log/auth/request_pending";
 static const char *LOG_AUTH_RESULT_OK    = "log/auth/result_ok";
 static const char *LOG_AUTH_RESULT_DONE  = "log/auth/result_done";
+static const char *LOG_ARRIVAL_ORDER_ID    = "log/arrival/order_id";
+static const char *LOG_ARRIVAL_PENDING     = "log/arrival/pending";
+static const char *LOG_ARRIVAL_DONE        = "log/arrival/done";
+static const char *LOG_ARRIVAL_OK          = "log/arrival/ok";
+static const char *LOG_ARRIVAL_MSG         = "log/arrival/msg";
 
 
 // tag struct for monitored items
@@ -97,6 +102,7 @@ enum class TagKind {
     WH_LOW_1,     WH_LOW_2,     WH_LOW_3,
     MFG_AUTH_PENDING,
     LOG_AUTH_PENDING,
+    LOG_ARRIVAL_PENDING,
 };
 
 struct MonTag {
@@ -336,6 +342,58 @@ public slots:
         if(rc != UA_STATUSCODE_GOOD)
             emit errorOccurred("logConsume", "call failed: " + sc(rc));
     }
+    void logWriteArrivalResult(bool ok, const QString &msg) {
+        QMutexLocker lk(&mu);
+        if(!log.client || !log.connected) {
+            emit errorOccurred("logWriteArrivalResult", "LOG not connected");
+            return;
+        }
+
+        UA_Boolean bOk = ok ? true : false;
+        UA_Boolean bDone = true;
+        UA_Boolean bPending = false;
+
+        QByteArray ba = msg.toUtf8();
+        UA_String s;
+        s.length = (size_t)ba.size();
+        s.data = (UA_Byte*)ba.data();
+
+        UA_Variant vOk, vDone, vPending, vMsg;
+        UA_Variant_setScalar(&vOk, &bOk, &UA_TYPES[UA_TYPES_BOOLEAN]);
+        UA_Variant_setScalar(&vDone, &bDone, &UA_TYPES[UA_TYPES_BOOLEAN]);
+        UA_Variant_setScalar(&vPending, &bPending, &UA_TYPES[UA_TYPES_BOOLEAN]);
+        UA_Variant_setScalar(&vMsg, &s, &UA_TYPES[UA_TYPES_STRING]);
+
+        UA_Client_writeValueAttribute(log.client, nid(LOG_ARRIVAL_OK), &vOk);
+        UA_Client_writeValueAttribute(log.client, nid(LOG_ARRIVAL_DONE), &vDone);
+        UA_Client_writeValueAttribute(log.client, nid(LOG_ARRIVAL_PENDING), &vPending);
+        UA_Client_writeValueAttribute(log.client, nid(LOG_ARRIVAL_MSG), &vMsg);
+    }
+
+    void logClearArrivalRequest() {
+        QMutexLocker lk(&mu);
+        if(!log.client || !log.connected) {
+            emit errorOccurred("logClearArrivalRequest", "LOG not connected");
+            return;
+        }
+
+        UA_Boolean bFalse = false;
+
+        QByteArray emptyBa;
+        UA_String empty;
+        empty.length = 0;
+        empty.data = (UA_Byte*)emptyBa.data();
+
+        UA_Variant vFalse, vEmpty;
+        UA_Variant_setScalar(&vFalse, &bFalse, &UA_TYPES[UA_TYPES_BOOLEAN]);
+        UA_Variant_setScalar(&vEmpty, &empty, &UA_TYPES[UA_TYPES_STRING]);
+
+        UA_Client_writeValueAttribute(log.client, nid(LOG_ARRIVAL_PENDING), &vFalse);
+        UA_Client_writeValueAttribute(log.client, nid(LOG_ARRIVAL_DONE), &vFalse);
+        UA_Client_writeValueAttribute(log.client, nid(LOG_ARRIVAL_OK), &vFalse);
+        UA_Client_writeValueAttribute(log.client, nid(LOG_ARRIVAL_MSG), &vEmpty);
+        UA_Client_writeValueAttribute(log.client, nid(LOG_ARRIVAL_ORDER_ID), &vEmpty);
+    }
 
     void mfgSendAuthResult(bool ok) {
         QMutexLocker lk(&mu);
@@ -409,6 +467,8 @@ signals:
 
     void mfgAuthRequestReceived(const QString &id, const QString &pw);
     void logAuthRequestReceived(const QString &id, const QString &pw);
+
+    void logArrivalRequested(const QString &orderId);
 
     void errorOccurred(const QString &where, const QString &msg);
     void info(const QString &msg);
@@ -509,6 +569,15 @@ private:
             QString pw = readStringNode(log.client, LOG_AUTH_REQ_PW);
             emit info(QString("[AUTH][LOG] delayed read id=[%1] pw=[%2]").arg(id, pw));
             emit logAuthRequestReceived(id, pw);
+        });
+    }
+
+    void emitLogArrivalRequest() {
+        QTimer::singleShot(50, this, [this]() {
+            QString orderId = readStringNode(log.client, LOG_ARRIVAL_ORDER_ID);
+            emit info(QString("[ARRIVAL][LOG] orderId=[%1]").arg(orderId));
+            if(!orderId.isEmpty())
+                emit logArrivalRequested(orderId);
         });
     }
 
@@ -636,6 +705,10 @@ private:
             }
             if(tag->kind == TagKind::LOG_AUTH_PENDING) {
                 if(b) self->emitLogAuthRequest();
+                return;
+            }
+            if(tag->kind == TagKind::LOG_ARRIVAL_PENDING) {
+                if(b) self->emitLogArrivalRequest();
                 return;
             }
             switch(tag->kind) {
@@ -936,6 +1009,7 @@ private:
             addMon(c, nid(LOG_WH_LOW[1]),     TagKind::WH_LOW_2);
             addMon(c, nid(LOG_WH_LOW[2]),     TagKind::WH_LOW_3);
             addMon(c, nid(LOG_AUTH_REQ_PENDING), TagKind::LOG_AUTH_PENDING);
+            addMon(c, nid(LOG_ARRIVAL_PENDING), TagKind::LOG_ARRIVAL_PENDING);
         }
     }
 
@@ -1000,6 +1074,10 @@ OpcUaService::OpcUaService(QObject *parent) : QObject(parent) {
     connect(m_worker, &Worker::info, this, &OpcUaService::info);
 
     connect(&m_thread, &QThread::finished, m_worker, &QObject::deleteLater);
+
+    connect(m_worker, &Worker::logArrivalRequested,this, &OpcUaService::logArrivalRequested);
+
+    connect(m_worker, &Worker::logArrivalRequested, this, &OpcUaService::logArrivalRequested);
 }
 
 OpcUaService::~OpcUaService() {
@@ -1105,6 +1183,17 @@ void OpcUaService::logSendAuthResult(bool ok) {
     start();
     QMetaObject::invokeMethod(m_worker, "logSendAuthResult", Qt::QueuedConnection,
                               Q_ARG(bool, ok));
+}
+void OpcUaService::logWriteArrivalResult(bool ok, const QString &msg) {
+    start();
+    QMetaObject::invokeMethod(m_worker, "logWriteArrivalResult", Qt::QueuedConnection,
+                              Q_ARG(bool, ok),
+                              Q_ARG(QString, msg));
+}
+
+void OpcUaService::logClearArrivalRequest() {
+    start();
+    QMetaObject::invokeMethod(m_worker, "logClearArrivalRequest", Qt::QueuedConnection);
 }
 
 #include "opcua_service.moc"

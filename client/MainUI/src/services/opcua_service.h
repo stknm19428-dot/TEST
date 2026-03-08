@@ -50,6 +50,8 @@ public:
     Q_INVOKABLE void logMove(int wh1to3, quint32 qty);                // log/Move(wh:uint16, qty:uint32)
     Q_INVOKABLE void logStopMove();                                   // log/StopMove()
     Q_INVOKABLE void logConsume(int wh1to3, quint32 qty);             // log/Consume(wh:uint16, qty:uint32)
+    Q_INVOKABLE void logWriteArrivalResult(bool ok, const QString &msg);
+    Q_INVOKABLE void logClearArrivalRequest();
     // ✅ 서버 로그인 결과 회신
     void mfgSendAuthResult(bool ok);
     void logSendAuthResult(bool ok);
@@ -80,6 +82,8 @@ signals:
     void logWhLoadedUpdated(int wh1to3, bool loaded);
     void logWhQtyUpdated(int wh1to3, quint32 qty);
     void logWhLowStockUpdated(int wh1to3, bool low);
+
+    void logArrivalRequested(const QString &orderId);
 
     // ✅ 서버가 보낸 로그인 요청
     void mfgAuthRequestReceived(const QString &id, const QString &pw);

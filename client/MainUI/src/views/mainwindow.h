@@ -23,6 +23,7 @@ class MainWindow : public QMainWindow {
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    OpcUaService* opcUaService() const { return ua; }
 
 private:
     Ui::MainWindow *ui;
