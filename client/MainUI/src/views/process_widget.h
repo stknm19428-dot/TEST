@@ -1,6 +1,6 @@
-#ifndef PROCESS_WIDGET_H
+﻿#ifndef PROCESS_WIDGET_H
 #define PROCESS_WIDGET_H
-
+#include "base/base_page_widget.h"
 #include <QWidget>
 #include <QTreeWidgetItem>
 
@@ -8,7 +8,7 @@ namespace Ui {
 class ProcessWidget;
 }
 
-class ProcessWidget : public QWidget
+class ProcessWidget : public BasePageWidget // 0308 haesung changed it 'QWidget' into 'BasePageWidget'
 {
     Q_OBJECT
 
@@ -18,6 +18,7 @@ public:
 
 private slots:
     void on_stop_clicked(const QString &process_name);
+    void on_Back_btn_clicked();
 
 private:
     Ui::ProcessWidget *ui;

@@ -1,4 +1,4 @@
-#ifndef DELIVERY_WIDGET_H
+﻿#ifndef DELIVERY_WIDGET_H
 #define DELIVERY_WIDGET_H
 
 #include <QWidget>
@@ -23,6 +23,7 @@ public:
 private slots:
     void on_create_delivery_button_clicked();
     void on_complete_delivery_button_clicked();
+    void on_Back_btn_clicked();
 
 private:
     Ui::DeliveryWidget *ui;

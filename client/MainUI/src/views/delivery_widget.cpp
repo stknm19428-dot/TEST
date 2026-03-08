@@ -1,4 +1,4 @@
-#include "delivery_widget.h"
+﻿#include "delivery_widget.h"
 #include "ui_delivery_widget.h"
 #include "../services/delivery_service.h"
 
@@ -85,4 +85,9 @@ void DeliveryWidget::on_complete_delivery_button_clicked()
     if (DeliveryService::completeDelivery(selected_id)) {
         loadDeliveryData(); // 테이블 새로고침
     }
+}
+
+void DeliveryWidget::on_Back_btn_clicked()
+{
+    emit requestPageChange(PageType::Dashboard);
 }

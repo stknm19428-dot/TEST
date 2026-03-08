@@ -36,8 +36,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/services/partner_manage_service.cpp
         src/services/scm_manage_service.h
         src/services/scm_manage_service.cpp
-        src/services/manufacture_manage_service.h
-        src/services/manufacture_manage_service.cpp
+
         src/services/manufacture_service.h
         src/services/manufacture_service.cpp
 

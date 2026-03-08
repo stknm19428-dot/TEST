@@ -1,10 +1,10 @@
-#include "process_widget.h"
+﻿#include "process_widget.h"
 #include "ui_process_widget.h"
 #include <QPushButton>
 #include <QDebug>
 
 ProcessWidget::ProcessWidget(QWidget *parent)
-    : QWidget(parent)
+    : BasePageWidget(parent)  // 0308 haesung changed it 'QWidget' into 'BasePageWidget'
     , ui(new Ui::ProcessWidget)
 {
     ui->setupUi(this);
@@ -61,3 +61,11 @@ void ProcessWidget::on_stop_clicked(const QString &process_name)
 {
     qDebug() << "[정지 신호]" << process_name;
 }
+
+void ProcessWidget::on_Back_btn_clicked()
+{
+    emit requestPageChange(PageType::Dashboard); // Haesung : why does it make 'requestPageChange was not declared in this scope' error
+                                                 //           especially on this widget??
+                                                 // fixed it by [0308 haesung changed it 'QWidget' into 'BasePageWidget'] !!
+}
+
