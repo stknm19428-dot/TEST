@@ -12,6 +12,12 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     ua = new OpcUaService(this);
 
+    // 2. UI에 이미 생성된 processPage를 가져와서 서비스를 넘겨줍니다.
+    auto* process = qobject_cast<ProcessWidget*>(ui->processPage);
+    if (process) {
+        process->setOpcUaService(ua);
+    }
+
     // =====================================================
     // ✅ 서버(MFG)가 보낸 로그인 요청 처리
     // =====================================================
@@ -154,5 +160,9 @@ void MainWindow::moveToPage(PageType type) {
     case PageType::Manufacture:
         ui->stackedWidget->setCurrentWidget(ui->manufacturePage);
         break;
+    case PageType::EnvironmentLogs:
+        ui->stackedWidget->setCurrentWidget(ui->environmentLogsPage);
+        break;
     }
+
 }

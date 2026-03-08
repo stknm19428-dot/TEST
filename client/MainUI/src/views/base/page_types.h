@@ -9,7 +9,8 @@ enum class PageType {
     ScmManage,
     Delivery,
     Process,
-    Manufacture
+    Manufacture,
+    EnvironmentLogs
     // 새로운 페이지가 추가되면 여기에 이름만 추가해야 함
 };
 

@@ -46,6 +46,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/services/dashboard_service.cpp
         src/services/dashboard_service.h
 
+        src/services/environment_logs_service.cpp
+        src/services/environment_logs_service.h
+
         # Models
         src/models/company_model.h
 
@@ -93,6 +96,10 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/views/manufacture_widget.cpp
         src/views/manufacture_widget.h
         src/views/manufacture_widget.ui
+
+        src/views/environment_logs_widget.cpp
+        src/views/environment_logs_widget.h
+        src/views/environment_logs_widget.ui
 
         src/views/delivery_dialog.cpp
         src/views/delivery_dialog.h

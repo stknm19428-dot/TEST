@@ -33,6 +33,7 @@ private slots:
     void on_DeliveryBtn_clicked();
     void on_ProcessBtn_clicked();
     void on_ManufactureBtn_clicked();
+    void on_ErrorLogBtn_clicked();
 
 
 private:
