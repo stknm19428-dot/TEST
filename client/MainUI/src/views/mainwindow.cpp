@@ -117,9 +117,10 @@ void MainWindow::setupNavigation() {
     auto* scmManage = qobject_cast<BasePageWidget*>(ui->ScmManagePage);
     auto* delivery = qobject_cast<BasePageWidget*>(ui->deliveryPage);
     auto* process = qobject_cast<BasePageWidget*>(ui->processPage);
+    auto* manufacture = qobject_cast<BasePageWidget*>(ui->manufacturePage);
 
     // 모든 위젯을 리스트에 담아 한 번에 연결 (중복 코드 방지)
-    QList<BasePageWidget*> pages = {login, dashboard, partnerManage, scmManage, delivery, process};
+    QList<BasePageWidget*> pages = {login, dashboard, partnerManage, scmManage, delivery, process, manufacture};
 
     for (BasePageWidget* page : pages) {
         if (page) {
@@ -149,6 +150,9 @@ void MainWindow::moveToPage(PageType type) {
         break;
     case PageType::Process:
         ui->stackedWidget->setCurrentWidget(ui->processPage);
+        break;
+    case PageType::Manufacture:
+        ui->stackedWidget->setCurrentWidget(ui->manufacturePage);
         break;
     }
 }

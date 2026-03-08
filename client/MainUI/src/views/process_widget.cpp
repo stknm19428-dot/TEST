@@ -47,16 +47,42 @@ void ProcessWidget::add_process_item(QTreeWidgetItem *parent_item,
     QTreeWidgetItem *item = new QTreeWidgetItem(parent_item);
     item->setText(0, process_name);
 
+    // 1. 버튼들을 담을 컨테이너 위젯과 수평 레이아웃 생성
+    QWidget *container = new QWidget();
+    QHBoxLayout *layout = new QHBoxLayout(container);
+
+    // 레이아웃 간격 및 여백 조정 (표 안에서 예쁘게 보이도록)
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(5);
+
+    // 2. 시작 버튼 생성 및 연결
+    QPushButton *start_btn = new QPushButton("시작");
+    start_btn->setFixedWidth(80);
+    connect(start_btn, &QPushButton::clicked, this, [this, process_name]() {
+        qDebug() << "[시작 신호]" << process_name;
+    });
+
+    // 3. 정지 버튼 생성 및 연결
     QPushButton *stop_btn = new QPushButton("정지");
     stop_btn->setFixedWidth(80);
-
     connect(stop_btn, &QPushButton::clicked, this, [this, process_name]() {
         on_stop_clicked(process_name);
     });
 
-    ui->process_tree_widget->setItemWidget(item, 1, stop_btn);
+    // 4. 레이아웃에 버튼 추가
+    layout->addWidget(start_btn);
+    layout->addWidget(stop_btn);
+    layout->addStretch(); // 버튼들을 왼쪽으로 정렬
+
+    ui->process_tree_widget->setItemWidget(item, 1, container);
 }
 
+
+void ProcessWidget::on_start_clicked(const QString &process_name)
+{
+    qDebug() << "[시작 신호]" << process_name;
+    // TODO: 여기에 OPC UA 서버로 시작 명령을 보내는 로직을 추가하면 됩니다.
+}
 void ProcessWidget::on_stop_clicked(const QString &process_name)
 {
     qDebug() << "[정지 신호]" << process_name;

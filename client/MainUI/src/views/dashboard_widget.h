@@ -32,6 +32,7 @@ private slots:
     void on_ScmManageBtn_clicked();
     void on_DeliveryBtn_clicked();
     void on_ProcessBtn_clicked();
+    void on_ManufactureBtn_clicked();
 
 
 private:

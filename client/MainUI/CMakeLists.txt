@@ -52,6 +52,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/models/inventory_model.h
         src/models/inventory_order_logs_model.h
 
+        src/models/manufacture_model.h
+
 
         # Views
         src/views/base/base_page_widget.h
@@ -88,22 +90,21 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/views/delivery_widget.h
         src/views/delivery_widget.ui
 
+        src/views/manufacture_widget.cpp
+        src/views/manufacture_widget.h
+        src/views/manufacture_widget.ui
 
         src/views/delivery_dialog.cpp
         src/views/delivery_dialog.h
         src/views/delivery_dialog.ui
 
-        src/views/logistics_schedule_dialog.h
-        src/views/logistics_schedule_dialog.cpp
-        src/views/logistics_schedule_dialog.ui
-
         src/views/order_edit_dialog.ui
         src/views/order_edit_dialog.cpp
         src/views/order_edit_dialog.h
 
-        src/views/produce_add_dialog.cpp
-        src/views/produce_add_dialog.h
-        src/views/produce_add_dialog.ui
+        src/views/manufacture_schedule_dialog.cpp
+        src/views/manufacture_schedule_dialog.h
+        src/views/manufacture_schedule_dialog.ui
     )
 else()
     if(ANDROID)

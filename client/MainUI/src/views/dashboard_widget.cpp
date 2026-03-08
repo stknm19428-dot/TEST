@@ -241,5 +241,9 @@ void DashboardWidget::on_DeliveryBtn_clicked()
 }
 void DashboardWidget::on_ProcessBtn_clicked()
 {
-    emit requestPageChange(PageType::Process);
+    emit requestPageChange(PageType::Process); // 0308 Haesung fixed
+}
+void DashboardWidget::on_ManufactureBtn_clicked()
+{
+    emit requestPageChange(PageType::Manufacture); // 0308 Haesung added
 }
