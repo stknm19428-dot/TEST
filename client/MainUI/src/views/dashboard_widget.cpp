@@ -241,5 +241,5 @@ void DashboardWidget::on_DeliveryBtn_clicked()
 }
 void DashboardWidget::on_ProcessBtn_clicked()
 {
-    emit requestPageChange(PageType::Delivery);
+    emit requestPageChange(PageType::Process);
 }

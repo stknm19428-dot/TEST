@@ -5,7 +5,6 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlError>
-#include "logistics_schedule_dialog.h"
 
 namespace Ui {
 class ScmManageWidget;
