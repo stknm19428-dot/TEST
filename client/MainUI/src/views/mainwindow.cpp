@@ -154,5 +154,9 @@ void MainWindow::moveToPage(PageType type) {
     case PageType::Manufacture:
         ui->stackedWidget->setCurrentWidget(ui->manufacturePage);
         break;
+    case PageType::EnvironmentLogs:
+        ui->stackedWidget->setCurrentWidget(ui->environmentLogsPage);
+        break;
     }
+
 }

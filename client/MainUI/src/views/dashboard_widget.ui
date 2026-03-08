@@ -76,7 +76,7 @@
     <string>생산 관리</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pushButton_4">
+  <widget class="QPushButton" name="ErrorLogBtn">
    <property name="geometry">
     <rect>
      <x>411</x>

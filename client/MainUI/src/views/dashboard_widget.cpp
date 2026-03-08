@@ -247,3 +247,7 @@ void DashboardWidget::on_ManufactureBtn_clicked()
 {
     emit requestPageChange(PageType::Manufacture); // 0308 Haesung added
 }
+void DashboardWidget::on_ErrorLogBtn_clicked()
+{
+    emit requestPageChange(PageType::EnvironmentLogs); // 0308 Haesung added
+}

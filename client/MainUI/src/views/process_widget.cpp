@@ -1,5 +1,7 @@
 ﻿#include "process_widget.h"
 #include "ui_process_widget.h"
+#include "../services/opcua_service.h"
+#include "mainwindow.h"
 #include <QPushButton>
 #include <QDebug>
 
@@ -15,6 +17,10 @@ ProcessWidget::ProcessWidget(QWidget *parent)
 ProcessWidget::~ProcessWidget()
 {
     delete ui;
+}
+
+void ProcessWidget::setOpcUaService(OpcUaService *uaService) {
+    m_ua = uaService;
 }
 
 void ProcessWidget::setup_process_tree()
@@ -86,6 +92,12 @@ void ProcessWidget::on_start_clicked(const QString &process_name)
 void ProcessWidget::on_stop_clicked(const QString &process_name)
 {
     qDebug() << "[정지 신호]" << process_name;
+
+    // MainWindow에 선언된 ua 객체를 사용하여 MFG 서버의 정지 메서드 호출
+    // opcua_service.cpp 내부에 정의된 mfgStopOrder()를 실행합니다.
+    if(m_ua){
+        m_ua->mfgStopOrder();
+    }
 }
 
 void ProcessWidget::on_Back_btn_clicked()

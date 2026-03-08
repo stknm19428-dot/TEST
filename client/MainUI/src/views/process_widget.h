@@ -1,6 +1,7 @@
 ﻿#ifndef PROCESS_WIDGET_H
 #define PROCESS_WIDGET_H
 #include "base/base_page_widget.h"
+#include "../services/opcua_service.h"
 #include <QWidget>
 #include <QTreeWidgetItem>
 
@@ -14,6 +15,8 @@ class ProcessWidget : public BasePageWidget // 0308 haesung changed it 'QWidget'
 
 public:
     explicit ProcessWidget(QWidget *parent = nullptr);
+    void setOpcUaService(OpcUaService *uaService);
+
     ~ProcessWidget();
 
 private slots:
@@ -27,6 +30,8 @@ private:
     void setup_process_tree();
     void add_process_item(QTreeWidgetItem *parent_item,
                           const QString &process_name);
+
+    OpcUaService *m_ua; //서비스를 저장할 포인터변수
 };
 
 #endif // PROCESS_WIDGET_H
