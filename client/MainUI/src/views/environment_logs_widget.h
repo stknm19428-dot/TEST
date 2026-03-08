@@ -1,6 +1,6 @@
 #ifndef ENVIRONMENT_LOGS_WIDGET_H
 #define ENVIRONMENT_LOGS_WIDGET_H
-
+#include "../services/environment_logs_service.h"
 #include "base/base_page_widget.h"
 
 #include <QWidget>
@@ -13,13 +13,6 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class EnvironmentLogsWidget; }
 QT_END_NAMESPACE
 
-struct LogEntry
-{
-    QString time;
-    QString line;
-    QString type;
-    QString message;
-};
 
 class EnvironmentLogsWidget : public BasePageWidget
 {

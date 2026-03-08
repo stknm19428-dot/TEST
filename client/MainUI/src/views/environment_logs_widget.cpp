@@ -1,10 +1,7 @@
 #include "environment_logs_widget.h"
 #include "ui_environment_logs_widget.h"
 
-#include "../core/database_manager.h"
 
-#include <QSqlQuery>
-#include <QSqlError>
 #include <QDebug>
 #include <QFont>
 #include <QTextOption>
@@ -97,90 +94,15 @@ void EnvironmentLogsWidget::refreshLogView()
 }
 
 
-
-
-// connect to database and implement query
-// save logs in allLogs, then draw filtered result on logView
 void EnvironmentLogsWidget::loadAllData()
 {
-    if (!DatabaseManager::instance().connect()) {
-        qDebug() << "[ENV] Database connect failed!";
-        return;
-    }
-
-    QSqlQuery query;
+    EnvironmentLogsService service;
+    QVector<LogEntry> newLogs;
 
     if (firstLoad) {
-        // first load: bring recent 200 logs
-        query.prepare(
-            "SELECT process_id, sensor_type, sensor_value, description, event_at "
-            "FROM environment_logs "
-            "ORDER BY event_at DESC "
-            "LIMIT 200"
-            );
+        newLogs = service.fetchRecentLogs();
     } else {
-        // after first load: only bring new logs
-        query.prepare(
-            "SELECT process_id, sensor_type, sensor_value, description, event_at "
-            "FROM environment_logs "
-            "WHERE event_at > :lastEventAt "
-            "ORDER BY event_at ASC"
-            );
-        query.bindValue(":lastEventAt", lastEventAt);
-    }
-
-    if (!query.exec()) {
-        qDebug() << "[ENV] SELECT failed:" << query.lastError().text();
-        return;
-    }
-
-    QVector<LogEntry> newLogs;
-    QDateTime newestEventAt = lastEventAt;
-
-    while (query.next()) {
-        const QString processId = query.value("process_id").toString();
-        const QString value     = query.value("sensor_value").toString();
-        const QString desc      = query.value("description").toString();
-        const QDateTime eventAt = query.value("event_at").toDateTime();
-        const QString t         = eventAt.toString("yyyy-MM-dd HH:mm:ss");
-
-        QString line;
-        if (processId.startsWith("63014862-922"))
-            line = "Manufacture";
-        else if (processId.startsWith("1faeda99-118"))
-            line = "Logistics";
-        else if (processId.startsWith("9f87460c-14f"))
-            line = "ALL";
-        else
-            line = "-";
-
-        QString typeLabel;
-        if (desc.contains("FIRE", Qt::CaseInsensitive) ||
-            desc.contains("STOPPED", Qt::CaseInsensitive))
-        {
-            typeLabel = "WARNING";
-        }
-        else if (desc.contains("ABNORMAL", Qt::CaseInsensitive) ||
-                 desc.contains("OUT OF STOCK", Qt::CaseInsensitive) ||
-                 desc.contains("STANDARD", Qt::CaseInsensitive))
-        {
-            typeLabel = "INFO";
-        }
-        else
-        {
-            typeLabel = "UNKNOWN";
-        }
-
-        LogEntry log;
-        log.time = t.left(W_TIME);
-        log.line = line;
-        log.type = typeLabel;
-        log.message = desc + (value.isEmpty() ? "" : (" (" + value + ")"));
-
-        newLogs.append(log);
-
-        if (eventAt.isValid() && eventAt > newestEventAt)
-            newestEventAt = eventAt;
+        newLogs = service.fetchLogsAfter(lastEventAt);
     }
 
     if (newLogs.isEmpty()) {
@@ -189,18 +111,22 @@ void EnvironmentLogsWidget::loadAllData()
         return;
     }
 
+    QDateTime newestEventAt = lastEventAt;
+
     if (firstLoad) {
-        // first query was DESC, so reverse before storing
-        // to show old -> new from top to bottom
         for (int i = newLogs.size() - 1; i >= 0; --i) {
             allLogs.append(newLogs[i]);
         }
         firstLoad = false;
     } else {
-        // new logs already came in ASC order
         for (const LogEntry &log : newLogs) {
             allLogs.append(log);
         }
+    }
+
+    for (const LogEntry &log : newLogs) {
+        if (log.eventAt.isValid() && log.eventAt > newestEventAt)
+            newestEventAt = log.eventAt;
     }
 
     if (newestEventAt.isValid())
@@ -208,6 +134,10 @@ void EnvironmentLogsWidget::loadAllData()
 
     refreshLogView();
 }
+
+
+
+
 
 
 
