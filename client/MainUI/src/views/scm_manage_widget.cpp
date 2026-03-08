@@ -3,7 +3,6 @@
 #include "user_session.h"
 #include "order_edit_dialog.h"
 #include "scm_manage_service.h"
-#include "logistics_schedule_dialog.h"
 #include <QSqlQuery>               //
 #include <QSqlError>
 #include <QDebug>

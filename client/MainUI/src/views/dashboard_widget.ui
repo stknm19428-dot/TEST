@@ -63,7 +63,7 @@
     <string>원재료 관리</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pushButton_3">
+  <widget class="QPushButton" name="ManufactureBtn">
    <property name="geometry">
     <rect>
      <x>221</x>
