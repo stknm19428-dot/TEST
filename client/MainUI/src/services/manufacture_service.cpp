@@ -6,9 +6,15 @@
 #include <QSqlQuery>
 #include <QDebug>
 
+// ==============================
+// SELECT
+// ==============================
+
 QList<ManufactureInfo> ManufactureService::getProducts() {
     QList<ManufactureInfo> list;
-    QSqlQuery query("SELECT id, product_code, product_name, product_stock, description FROM product");
+    QSqlQuery query(
+        "SELECT id, product_code, product_name, product_stock, description " 
+        "FROM product");
 
     while (query.next()) {
         ManufactureInfo info;
@@ -20,21 +26,6 @@ QList<ManufactureInfo> ManufactureService::getProducts() {
         list.append(info);
     }
     return list;
-}
-
-bool ManufactureService::updateProductStock(const QString &product_id, int new_stock) {
-    QSqlQuery query;
-    query.prepare("UPDATE product SET product_stock = :stock WHERE id = :id");
-    query.bindValue(":stock", new_stock);
-    query.bindValue(":id", product_id);
-
-    if (query.exec()) {
-        qDebug() << "[재고 수정 성공]" << product_id << "→" << new_stock;
-        return true;
-    }
-
-    qDebug() << "[재고 수정 실패]" << query.lastError().text();
-    return false;
 }
 
 ProductionOrderTask ManufactureService::getProductionOrderById(const QString &orderId)
@@ -114,6 +105,53 @@ QList<RecipeItem> ManufactureService::getRecipeItemsByProductId(const QString &p
     return list;
 }
 
+QList<ManufactureScheduleInfo> ManufactureService::getSchedules() {
+    QList<ManufactureScheduleInfo> list;
+    QSqlQuery query(
+        "SELECT p.product_code, p.product_name, o.id, o.order_count, o.motor_speed, "
+        "o.status, o.created_at, o.deadline_at, o.updated_at "
+        "FROM product_order_logs o "
+        "LEFT JOIN product p ON o.product_id = p.id "
+        "ORDER BY o.created_at DESC");
+
+    while (query.next()) {
+        ManufactureScheduleInfo info;
+        info.id = query.value("id").toString();
+        info.productCode = query.value("product_code").toString();
+        info.productName = query.value("product_name").toString();
+        info.orderCount = query.value("order_count").toInt();
+        info.motorSpeed = query.value("motor_speed").toInt();
+        info.status = query.value("status").toString();
+        info.createdAt = query.value("created_at").toString();
+        info.deadlineAt = query.value("deadline_at").toString();
+        info.updatedAt = query.value("updated_at").toString();
+        list.append(info);
+    }
+    return list;
+}
+
+// ==============================
+// UPDATE
+// ==============================
+
+bool ManufactureService::updateProductStock(const QString &product_id, int new_stock) {
+    QSqlQuery query;
+    query.prepare(
+        "UPDATE product "
+        "SET product_stock = :stock "
+        "WHERE id = :id");
+    query.bindValue(":stock", new_stock);
+    query.bindValue(":id", product_id);
+
+    if (query.exec()) {
+        qDebug() << "[재고 수정 성공]" << product_id << "→" << new_stock;
+        return true;
+    }
+
+    qDebug() << "[재고 수정 실패]" << query.lastError().text();
+    return false;
+}
+
 bool ManufactureService::markProductionOrderInProc(const QString &orderId)
 {
     QSqlQuery query;
@@ -159,25 +197,6 @@ bool ManufactureService::markProductionOrderDone(const QString &orderId)
 
     if (!query.exec()) {
         qDebug() << "markProductionOrderDone failed:" << query.lastError().text();
-        return false;
-    }
-
-    return true;
-}
-
-bool ManufactureService::createProductLog(const ProductionOrderTask &task)
-{
-    QSqlQuery query;
-    query.prepare(
-        "INSERT INTO product_logs "
-        "(id, order_id, user_id, assignment_part, motor_speed, prod_count, defect_count, status, started_at) "
-        "VALUES (UUID(), :orderId, :userId, 'MFG', :motorSpeed, 0, 0, 'INPROC', NOW())");
-    query.bindValue(":orderId", task.orderId);
-    query.bindValue(":userId", UserSession::instance().userId().isEmpty() ? QVariant(QVariant::String) : QVariant(UserSession::instance().userId()));
-    query.bindValue(":motorSpeed", task.motorSpeed);
-
-    if (!query.exec()) {
-        qDebug() << "createProductLog failed:" << query.lastError().text();
         return false;
     }
 
@@ -262,4 +281,45 @@ bool ManufactureService::consumeRecipeItems(const QString &productId, int produc
     }
 
     return db.commit();
+}
+
+
+// ==============================
+// INSERT
+// ==============================
+
+bool ManufactureService::createProductLog(const ProductionOrderTask &task)
+{
+    QSqlQuery query;
+    query.prepare(
+        "INSERT INTO product_logs "
+        "(id, order_id, user_id, assignment_part, motor_speed, prod_count, defect_count, status, started_at) "
+        "VALUES (UUID(), :orderId, :userId, 'MFG', :motorSpeed, 0, 0, 'INPROC', NOW())");
+    query.bindValue(":orderId", task.orderId);
+    query.bindValue(":userId", UserSession::instance().userId().isEmpty() ? QVariant(QVariant::String) : QVariant(UserSession::instance().userId()));
+    query.bindValue(":motorSpeed", task.motorSpeed);
+
+    if (!query.exec()) {
+        qDebug() << "createProductLog failed:" << query.lastError().text();
+        return false;
+    }
+
+    return true;
+}
+
+// ==============================
+// DELETE
+// ==============================
+
+
+bool ManufactureService::deleteSchedule(const QString &orderId) {
+    QSqlQuery query;
+    query.prepare("DELETE FROM product_order_logs WHERE id = :id AND status != 'DONE'");
+    query.bindValue(":id", orderId);
+
+    if (query.exec()) {
+        return query.numRowsAffected() > 0;
+    }
+    qDebug() << "Delete Schedule Error:" << query.lastError().text();
+    return false;
 }

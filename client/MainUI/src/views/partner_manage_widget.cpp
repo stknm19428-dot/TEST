@@ -16,6 +16,12 @@ PartnerManageWidget::PartnerManageWidget(QWidget *parent) :
     loadAllData();
 }
 
+void PartnerManageWidget::showEvent(QShowEvent *event)
+{
+    BasePageWidget::showEvent(event);
+    loadAllData(); // 페이지 진입 시마다 협력사/고객사 명단 새로고침
+}
+
 void PartnerManageWidget::setupTableConfigs(){
     QStringList headers = {"name","address","contact"};
 

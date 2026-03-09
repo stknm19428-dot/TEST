@@ -17,9 +17,17 @@ ScmManageWidget::ScmManageWidget(QWidget *parent)
 
     setupStockStatusTableConfigs();
     setupStockOrderTableConfigs();
+}
+
+void ScmManageWidget::showEvent(QShowEvent *event)
+{
+    BasePageWidget::showEvent(event); // 부모 클래스 이벤트 처리
+
+    // 1. 최신 DB 데이터 불러오기
     loadInventoryData();
     loadInventoryOrderData();
 
+    // 2. OPC UA 바인딩 (이미 연결되었다면 m_opcBound에 의해 무시됨)
     QTimer::singleShot(0, this, [this](){
         setupOpcBindings();
     });

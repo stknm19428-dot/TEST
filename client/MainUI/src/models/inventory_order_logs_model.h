@@ -1,7 +1,4 @@
-﻿#ifndef INVENTORY_ORDER_LOGS_MODEL_H
-#define INVENTORY_ORDER_LOGS_MODEL_H
-
-#pragma once
+﻿#pragma once
 #include <QString>
 
 struct OrderInfo { //주문 정보 구조체
@@ -14,5 +11,3 @@ struct OrderInfo { //주문 정보 구조체
     QString receiveAt;
     QString updatedAt;
 };
-
-#endif // INVENTORY_ORDER_LOGS_MODEL_H

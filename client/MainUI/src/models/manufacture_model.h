@@ -30,3 +30,15 @@ struct ProductionOrderTask {
     QString status;
     int productNo = 1;
 };
+
+struct ManufactureScheduleInfo {
+    QString id;
+    QString productCode;
+    QString productName;
+    int orderCount = 0;
+    int motorSpeed = 0;
+    QString status;
+    QString createdAt;
+    QString deadlineAt;
+    QString updatedAt;
+};

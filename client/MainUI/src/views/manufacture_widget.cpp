@@ -1,12 +1,15 @@
 #include "manufacture_widget.h"
 #include "ui_manufacture_widget.h"
 #include "manufacture_schedule_dialog.h"
+#include "mainwindow.h"
+#include "../services/opcua_service.h"
 #include "../services/manufacture_service.h"
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlError>
+#include <QTimer>
 
 ManufactureWidget::ManufactureWidget(QWidget *parent)
     : BasePageWidget(parent)
@@ -29,6 +32,20 @@ QTableWidgetItem* createManufactureCenteredItem(const QString &text) {
     QTableWidgetItem *item = new QTableWidgetItem(text);
     item->setTextAlignment(Qt::AlignCenter);
     return item;
+}
+
+void ManufactureWidget::showEvent(QShowEvent *event)
+{
+    BasePageWidget::showEvent(event); // 부모 이벤트 호출
+
+    // 페이지가 열릴 때마다 최신 DB 정보를 불러옴
+    loadManufactureData();
+    loadScheduleData();
+
+    // OPC UA 바인딩 (처음 한 번만 실행됨)
+    QTimer::singleShot(0, this, [this](){
+        setupOpcBindings();
+    });
 }
 
 void ManufactureWidget::setupManufactureTableConfigs()
@@ -88,43 +105,26 @@ void ManufactureWidget::loadManufactureData()
 
 void ManufactureWidget::loadScheduleData()
 {
-    QSqlDatabase db = QSqlDatabase::database();
-    if (!db.isOpen()) {
-        qDebug() << "Manufacture: 데이터베이스가 열려있지 않습니다.";
-        return;
-    }
-
-    // 최신순 정렬
-    QSqlQuery query(
-        "SELECT p.product_code, p.product_name, o.id, o.order_count, o.motor_speed, "
-        "o.status, o.created_at, o.deadline_at, o.updated_at "
-        "FROM product_order_logs o "
-        "LEFT JOIN product p ON o.product_id = p.id "
-        "ORDER BY o.created_at DESC", db);
-
-    if (!query.exec()) {
-        qDebug() << "스케줄 조회 에러:" << query.lastError().text();
-        return;
-    }
+    // 1. 서비스에 데이터 요청 (API 호출 느낌)
+    auto schedules = ManufactureService::getSchedules();
 
     ui->schedule_table->setRowCount(0);
-    int row = 0;
-    while (query.next()) {
-        ui->schedule_table->insertRow(row);
-        ui->schedule_table->setItem(row, 0, createManufactureCenteredItem(
-                                                QString("[%1] %2").arg(query.value("product_code").toString(), query.value("product_name").toString())
-                                                ));
-        ui->schedule_table->setItem(row, 1, createManufactureCenteredItem(query.value("order_count").toString()));
-        ui->schedule_table->setItem(row, 2, createManufactureCenteredItem(query.value("motor_speed").toString()));
-        ui->schedule_table->setItem(row, 3, createManufactureCenteredItem(query.value("status").toString()));
-        ui->schedule_table->setItem(row, 4, new QTableWidgetItem(query.value("created_at").toString()));
-        ui->schedule_table->setItem(row, 5, new QTableWidgetItem(query.value("deadline_at").toString()));
-        ui->schedule_table->setItem(row, 6, new QTableWidgetItem(query.value("updated_at").toString()));
-        // 숨겨진 id 컬럼에 저장 (Cancel Schedule 기능에 사용)
-        ui->schedule_table->setItem(row, 7, new QTableWidgetItem(query.value("id").toString()));
-        row++;
+    for (int i = 0; i < schedules.size(); ++i) {
+        ui->schedule_table->insertRow(i);
+        
+        // 데이터 매핑
+        QString productDisplayName = QString("[%1] %2").arg(schedules[i].productCode, schedules[i].productName);
+        
+        ui->schedule_table->setItem(i, 0, createManufactureCenteredItem(productDisplayName));
+        ui->schedule_table->setItem(i, 1, createManufactureCenteredItem(QString::number(schedules[i].orderCount)));
+        ui->schedule_table->setItem(i, 2, createManufactureCenteredItem(QString::number(schedules[i].motorSpeed)));
+        ui->schedule_table->setItem(i, 3, createManufactureCenteredItem(schedules[i].status));
+        ui->schedule_table->setItem(i, 4, new QTableWidgetItem(schedules[i].createdAt));
+        ui->schedule_table->setItem(i, 5, new QTableWidgetItem(schedules[i].deadlineAt));
+        ui->schedule_table->setItem(i, 6, new QTableWidgetItem(schedules[i].updatedAt));
+        ui->schedule_table->setItem(i, 7, new QTableWidgetItem(schedules[i].id)); // 숨김 ID
     }
-    qDebug() << "총" << row << "개의 스케줄을 불러왔습니다.";
+    qDebug() << "총" << schedules.size() << "개의 스케줄을 불러왔습니다.";
 }
 
 void ManufactureWidget::on_edit_stock_button_clicked()
@@ -171,44 +171,54 @@ void ManufactureWidget::on_create_schedule_button_clicked()
 
 void ManufactureWidget::on_cancel_schedule_button_clicked()
 {
-    // 선택된 행 확인
     int row = ui->schedule_table->currentRow();
-    if (row < 0) {
-        qDebug() << "취소할 항목을 선택해주세요.";
-        return;
-    }
+    if (row < 0) return;
 
-    // 완료된 항목은 취소 불가
     QString status = ui->schedule_table->item(row, 3)->text();
     if (status == "DONE") {
-        qDebug() << "이미 완료된 항목은 취소할 수 없습니다.";
+        QMessageBox::warning(this, "취소 불가", "이미 완료된 항목은 취소할 수 없습니다.");
         return;
     }
 
-    // 숨겨진 컬럼에서 id 가져오기
     QString selected_id = ui->schedule_table->item(row, 7)->text();
 
-    // DB 연결 확인
-    QSqlDatabase db = QSqlDatabase::database();
-    if (!db.isOpen()) {
-        qDebug() << "DB 연결이 열려있지 않습니다.";
-        return;
-    }
-
-    // DB에서 해당 row 삭제
-    QSqlQuery query(db);
-    query.prepare("DELETE FROM product_order_logs WHERE id = :id");
-    query.bindValue(":id", selected_id);
-
-    if (query.exec()) {
-        qDebug() << "[스케줄 취소 성공]" << selected_id;
-        loadScheduleData(); // 테이블 새로고침
+    // 2. 서비스에 삭제 요청
+    if (ManufactureService::deleteSchedule(selected_id)) {
+        loadScheduleData(); // 성공 시 새로고침
     } else {
-        qDebug() << "[스케줄 취소 실패]" << query.lastError().text();
+        QMessageBox::critical(this, "에러", "스케줄 취소에 실패했습니다.");
     }
 }
 
 void ManufactureWidget::on_Back_btn_clicked()
 {
     emit requestPageChange(PageType::Dashboard);
+}
+
+void ManufactureWidget::setupOpcBindings()
+{
+    if (m_opcBound) return; // 이미 연결되었다면 중단
+
+    auto *mw = qobject_cast<MainWindow*>(window());
+    if (!mw) return;
+
+    auto *ua = mw->opcUaService();
+    if (!ua) return;
+
+    m_opcBound = true;
+
+    // 1. 생산량이 변했을 때 (실시간 Stock 갱신 등)
+    connect(ua, &OpcUaService::mfgProdCountUpdated, this, [this](quint64 count){
+        qDebug() << "[MFG UI] Production count updated:" << count;
+        loadManufactureData(); // 제품 재고 테이블 갱신
+        loadScheduleData();    // 스케줄 진행률(Status) 갱신
+    });
+
+    // 2. 공정 상태가 변했을 때 (PENDING -> INPROC -> DONE 등)
+    // 만약 OpcUaService에 mfgStatusUpdated 같은 시그널이 있다면 연결하세요.
+    /*
+    connect(ua, &OpcUaService::mfgStatusUpdated, this, [this](){
+        loadScheduleData(); 
+    });
+    */
 }

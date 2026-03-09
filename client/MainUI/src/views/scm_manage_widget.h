@@ -34,6 +34,10 @@ private:
     void loadInventoryData();
     void loadInventoryOrderData();
     void setupOpcBindings();
+
+protected:
+    // 페이지가 전환되어 화면에 나타날 때마다 호출됨
+    void showEvent(QShowEvent *event) override;
 };
 
 #endif // SCM_MANAGE_WIDGET_H

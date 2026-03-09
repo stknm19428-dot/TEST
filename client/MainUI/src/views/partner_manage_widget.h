@@ -24,6 +24,9 @@ private:
 
     void setupTableConfigs();
     void loadAllData();
-};
 
+protected:
+    void showEvent(QShowEvent *event) override;
+};
+    
 #endif // PARTNER_MANAGE_WIDGET_H

@@ -37,6 +37,11 @@ private:
     void setupScheduleTableConfigs();
     void loadManufactureData();
     void loadScheduleData();
+    void setupOpcBindings();
+    bool m_opcBound = false; // 중복 연결 방지 플래그
+
+protected:
+    void showEvent(QShowEvent *event) override;
 };
 
 #endif // MANUFACTURE_WIDGET_H
