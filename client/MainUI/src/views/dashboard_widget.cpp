@@ -9,6 +9,8 @@
 #include <QLegendMarker>
 #include <QGraphicsLayout>
 #include <QMap>
+#include <QLabel>
+#include <QGridLayout>
 
 DashboardWidget::DashboardWidget(QWidget *parent)
     : BasePageWidget(parent),
@@ -32,8 +34,24 @@ void DashboardWidget::showEvent(QShowEvent *event)
         ui->userName->setText("로그인 정보 없음");
     }
 
+    initSensorWidget();
     initStorageCharts();
     initProductionChart();
+}
+
+void DashboardWidget::set_opcua_service(OpcUaService *service)
+{
+    m_opcua_service = service;
+    if (!m_opcua_service) return;
+
+    connect(m_opcua_service, &OpcUaService::mfgTempUpdated,
+            this, &DashboardWidget::on_mfg_temp_updated);
+    connect(m_opcua_service, &OpcUaService::mfgHumUpdated,
+            this, &DashboardWidget::on_mfg_hum_updated);
+    connect(m_opcua_service, &OpcUaService::logTempUpdated,
+            this, &DashboardWidget::on_log_temp_updated);
+    connect(m_opcua_service, &OpcUaService::logHumUpdated,
+            this, &DashboardWidget::on_log_hum_updated);
 }
 
 void DashboardWidget::clearLayout(QLayout *layout)
@@ -45,6 +63,93 @@ void DashboardWidget::clearLayout(QLayout *layout)
         delete item->widget();
         delete item;
     }
+}
+
+
+/* -----------------------------
+   센서 온습도 표
+--------------------------------*/
+
+void DashboardWidget::initSensorWidget()
+{
+    if (!ui->sensor_widget) return;
+    if (ui->sensor_widget->layout()) return;
+
+    QGridLayout *grid = new QGridLayout();
+    grid->setSpacing(6);
+    grid->setContentsMargins(4, 4, 4, 4);
+
+    auto make_header = [](const QString &text) {
+        QLabel *lbl = new QLabel(text);
+        lbl->setAlignment(Qt::AlignCenter);
+        lbl->setStyleSheet(
+            "background-color: #3a3a3a;"
+            "color: white;"
+            "font-weight: bold;"
+            "font-size: 11px;"
+            "padding: 5px;"
+            "border-radius: 4px;"
+            );
+        return lbl;
+    };
+
+    auto make_value = [](const QString &text) {
+        QLabel *lbl = new QLabel(text);
+        lbl->setAlignment(Qt::AlignCenter);
+        lbl->setStyleSheet(
+            "background-color: #f0f4ff;"
+            "color: #222;"
+            "font-size: 11px;"
+            "padding: 5px;"
+            "border: 1px solid #ccc;"
+            "border-radius: 4px;"
+            );
+        return lbl;
+    };
+
+    // 1행: 제조 온도 | 값 | 제조 습도 | 값
+    grid->addWidget(make_header("제조 온도"), 0, 0);
+    mfg_temp_value = make_value("-- °C");
+    grid->addWidget(mfg_temp_value, 0, 1);
+
+    grid->addWidget(make_header("제조 습도"), 0, 2);
+    mfg_hum_value = make_value("-- %");
+    grid->addWidget(mfg_hum_value, 0, 3);
+
+    // 2행: 물류 온도 | 값 | 물류 습도 | 값
+    grid->addWidget(make_header("물류 온도"), 1, 0);
+    log_temp_value = make_value("-- °C");
+    grid->addWidget(log_temp_value, 1, 1);
+
+    grid->addWidget(make_header("물류 습도"), 1, 2);
+    log_hum_value = make_value("-- %");
+    grid->addWidget(log_hum_value, 1, 3);
+
+    ui->sensor_widget->setLayout(grid);
+}
+
+void DashboardWidget::on_mfg_temp_updated(double temp)
+{
+    if (mfg_temp_value)
+        mfg_temp_value->setText(QString::number(temp, 'f', 1) + " °C");
+}
+
+void DashboardWidget::on_mfg_hum_updated(double hum)
+{
+    if (mfg_hum_value)
+        mfg_hum_value->setText(QString::number(hum, 'f', 1) + " %");
+}
+
+void DashboardWidget::on_log_temp_updated(double temp)
+{
+    if (log_temp_value)
+        log_temp_value->setText(QString::number(temp, 'f', 1) + " °C");
+}
+
+void DashboardWidget::on_log_hum_updated(double hum)
+{
+    if (log_hum_value)
+        log_hum_value->setText(QString::number(hum, 'f', 1) + " %");
 }
 
 
@@ -160,7 +265,6 @@ void DashboardWidget::initProductionChart()
         }
     }
 
-    // 날짜별로 제품 생산량 채우기 (없으면 0)
     for (const auto &productName : barSetMap.keys()) {
         for (const auto &date : dateList) {
             int count = 0;
@@ -184,19 +288,16 @@ void DashboardWidget::initProductionChart()
     chart->setTitle("Daily Production (2026-03-03 ~ 2026-03-09)");
     chart->setAnimationOptions(QChart::SeriesAnimations);
 
-    // X축
     QBarCategoryAxis *axisX = new QBarCategoryAxis();
     axisX->append(dateList);
     chart->addAxis(axisX, Qt::AlignBottom);
     series->attachAxis(axisX);
 
-    // Y축 (타이틀 없음)
     QValueAxis *axisY = new QValueAxis();
     axisY->setLabelFormat("%d");
     chart->addAxis(axisY, Qt::AlignLeft);
     series->attachAxis(axisY);
 
-    // 범례
     chart->legend()->setVisible(true);
     chart->legend()->setAlignment(Qt::AlignTop);
 
@@ -204,7 +305,7 @@ void DashboardWidget::initProductionChart()
     chartView->setRenderHint(QPainter::Antialiasing);
     chartView->setMinimumHeight(300);
 
-    ui->prodChartLayout->addWidget(chartView);  // ✅ 바로 추가
+    ui->prodChartLayout->addWidget(chartView);
 
     qDebug() << "Production chart created, data count:" << productionData.size();
     qDebug() << "Dates:" << dateList;
@@ -236,3 +337,5 @@ void DashboardWidget::on_ErrorLogBtn_clicked()
 {
     emit requestPageChange(PageType::EnvironmentLogs);
 }
+
+#include "dashboard_widget.moc"

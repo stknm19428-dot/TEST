@@ -30,6 +30,12 @@ MainWindow::MainWindow(QWidget *parent)
                 });
     }
 
+    // ✅ 추가
+    auto* dashboard = qobject_cast<DashboardWidget*>(ui->dashBoardPage);
+    if (dashboard) {
+        dashboard->set_opcua_service(ua);
+    }
+
     connect(ua, &OpcUaService::mfgAuthRequestReceived, this,
             [this](const QString &id, const QString &pw){
                 const bool ok = m_authService.checkServerAccount("MFG", id, pw);
@@ -69,7 +75,7 @@ MainWindow::MainWindow(QWidget *parent)
         m_lastProdCount = prodCount;
         ManufactureService::increaseProductStock(m_activeProductId, delta);
         ManufactureService::updateProductLogProgress(m_activeProdOrderId, m_lastProdCount, m_lastDefectCount,
-                                                    m_waitMaterialStopRequested ? "WAIT_MAT" : "INPROC");
+                                                     m_waitMaterialStopRequested ? "WAIT_MAT" : "INPROC");
     });
 
     connect(ua, &OpcUaService::mfgDefectCountUpdated, this, [this](quint64 v) {
@@ -78,7 +84,7 @@ MainWindow::MainWindow(QWidget *parent)
 
         m_lastDefectCount = static_cast<int>(v);
         ManufactureService::updateProductLogProgress(m_activeProdOrderId, m_lastProdCount, m_lastDefectCount,
-                                                    m_waitMaterialStopRequested ? "WAIT_MAT" : "INPROC");
+                                                     m_waitMaterialStopRequested ? "WAIT_MAT" : "INPROC");
     });
 
     connect(ua, &OpcUaService::mfgAttemptCountUpdated, this, [this](quint64 v) {
@@ -103,7 +109,7 @@ MainWindow::MainWindow(QWidget *parent)
 
         ManufactureService::consumeRecipeItems(m_activeProductId, delta);
         ManufactureService::updateProductLogProgress(m_activeProdOrderId, m_lastProdCount, m_lastDefectCount,
-                                                    m_waitMaterialStopRequested ? "WAIT_MAT" : "INPROC");
+                                                     m_waitMaterialStopRequested ? "WAIT_MAT" : "INPROC");
     });
 
     connect(ua, &OpcUaService::logWhLowStockUpdated, this, [this](int, bool low) {
@@ -167,7 +173,7 @@ void MainWindow::startOpcUaOnce()
         "/home/pi/MES/servers/certs/mes/cert.der",
         "/home/pi/MES/servers/certs/mes/key.der",
         "/home/pi/MES/servers/certs/mes/trust_mfg.der"
-    );
+        );
 
     ua->connectLog(
         "opc.tcp://10.10.16.210:4841",
@@ -175,7 +181,7 @@ void MainWindow::startOpcUaOnce()
         "/home/pi/MES/servers/certs/mes/cert.der",
         "/home/pi/MES/servers/certs/mes/key.der",
         "/home/pi/MES/servers/certs/mes/trust_log.der"
-    );
+        );
 }
 
 void MainWindow::setupNavigation() {
