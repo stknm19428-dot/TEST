@@ -201,3 +201,26 @@ bool ScmManageService::increaseInventoryByOrderId(const QString& orderId, int de
 
     return db.commit();
 }
+
+
+WarehouseStockSnapshot ScmManageService::getWarehouseStockSnapshot()
+{
+    WarehouseStockSnapshot snap;
+
+    QSqlQuery query(
+        "SELECT location, COALESCE(SUM(current_stock), 0) AS qty "
+        "FROM inventory "
+        "GROUP BY location");
+
+    while (query.next()) {
+        const QString location = query.value("location").toString().trimmed().toUpper();
+        const quint32 qty = query.value("qty").toUInt();
+
+        const int wh = warehouseNoFromLocation(location);
+        if (wh == 1) snap.wh1 += qty;
+        else if (wh == 2) snap.wh2 += qty;
+        else if (wh == 3) snap.wh3 += qty;
+    }
+
+    return snap;
+}

@@ -65,6 +65,7 @@ static const char *LOG_WH_LOW[3]       = {"log/wh1/low_stock","log/wh2/low_stock
 
 static const char *LOG_MOVE_M          = "log/Move";
 static const char *LOG_STOPMOVE_M      = "log/StopMove";
+static const char *LOG_INITSTOCKS_M    = "log/InitStocks";
 static const char *LOG_CONSUME_M       = "log/Consume";
 // MFG AUTH
 static const char *MFG_AUTH_REQ_ID       = "mfg/auth/request_id";
@@ -341,6 +342,34 @@ public slots:
                                           0, nullptr);
         if(rc != UA_STATUSCODE_GOOD)
             emit errorOccurred("logConsume", "call failed: " + sc(rc));
+    }
+
+    void logInitStocks(quint32 wh1Qty, quint32 wh2Qty, quint32 wh3Qty) {
+        QMutexLocker lk(&mu);
+        if(!log.client || !log.connected) {
+            emit errorOccurred("logInitStocks", "LOG not connected");
+            return;
+        }
+
+        UA_UInt32 q1 = (UA_UInt32)wh1Qty;
+        UA_UInt32 q2 = (UA_UInt32)wh2Qty;
+        UA_UInt32 q3 = (UA_UInt32)wh3Qty;
+
+        UA_Variant in[3];
+        UA_Variant_init(&in[0]);
+        UA_Variant_init(&in[1]);
+        UA_Variant_init(&in[2]);
+        UA_Variant_setScalar(&in[0], &q1, &UA_TYPES[UA_TYPES_UINT32]);
+        UA_Variant_setScalar(&in[1], &q2, &UA_TYPES[UA_TYPES_UINT32]);
+        UA_Variant_setScalar(&in[2], &q3, &UA_TYPES[UA_TYPES_UINT32]);
+
+        UA_StatusCode rc = UA_Client_call(log.client,
+                                          UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER),
+                                          nid(LOG_INITSTOCKS_M),
+                                          3, in,
+                                          0, nullptr);
+        if(rc != UA_STATUSCODE_GOOD)
+            emit errorOccurred("logInitStocks", "call failed: " + sc(rc));
     }
     void logWriteArrivalResult(bool ok, const QString &msg) {
         QMutexLocker lk(&mu);
@@ -1075,8 +1104,6 @@ OpcUaService::OpcUaService(QObject *parent) : QObject(parent) {
 
     connect(&m_thread, &QThread::finished, m_worker, &QObject::deleteLater);
 
-    connect(m_worker, &Worker::logArrivalRequested,this, &OpcUaService::logArrivalRequested);
-
     connect(m_worker, &Worker::logArrivalRequested, this, &OpcUaService::logArrivalRequested);
 }
 
@@ -1171,6 +1198,14 @@ void OpcUaService::logConsume(int wh1to3, quint32 qty) {
     QMetaObject::invokeMethod(m_worker, "logConsume", Qt::QueuedConnection,
                               Q_ARG(int, wh1to3),
                               Q_ARG(quint32, qty));
+}
+
+void OpcUaService::logInitStocks(quint32 wh1Qty, quint32 wh2Qty, quint32 wh3Qty) {
+    start();
+    QMetaObject::invokeMethod(m_worker, "logInitStocks", Qt::QueuedConnection,
+                              Q_ARG(quint32, wh1Qty),
+                              Q_ARG(quint32, wh2Qty),
+                              Q_ARG(quint32, wh3Qty));
 }
 
 void OpcUaService::mfgSendAuthResult(bool ok) {

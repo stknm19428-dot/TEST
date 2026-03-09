@@ -50,6 +50,7 @@ public:
     Q_INVOKABLE void logMove(int wh1to3, quint32 qty);                // log/Move(wh:uint16, qty:uint32)
     Q_INVOKABLE void logStopMove();                                   // log/StopMove()
     Q_INVOKABLE void logConsume(int wh1to3, quint32 qty);             // log/Consume(wh:uint16, qty:uint32)
+    Q_INVOKABLE void logInitStocks(quint32 wh1Qty, quint32 wh2Qty, quint32 wh3Qty);
     Q_INVOKABLE void logWriteArrivalResult(bool ok, const QString &msg);
     Q_INVOKABLE void logClearArrivalRequest();
     // ✅ 서버 로그인 결과 회신

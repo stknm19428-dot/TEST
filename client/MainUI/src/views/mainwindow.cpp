@@ -4,6 +4,10 @@
 #include "login_widget.h"
 #include "dashboard_widget.h"
 #include "partner_manage_widget.h"
+#include "process_widget.h"
+#include "../core/database_manager.h"
+#include "../services/manufacture_service.h"
+#include "../services/scm_manage_service.h"
 #include <QDebug>
 #include <QFile>
 
@@ -12,60 +16,130 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     ua = new OpcUaService(this);
 
-    // 2. UI에 이미 생성된 processPage를 가져와서 서비스를 넘겨줍니다.
     auto* process = qobject_cast<ProcessWidget*>(ui->processPage);
     if (process) {
         process->setOpcUaService(ua);
+        connect(process, &ProcessWidget::productionOrderStarted, this,
+                [this](const QString &orderId, const QString &productId) {
+                    m_activeProdOrderId = orderId;
+                    m_activeProductId = productId;
+                    m_lastProdCount = 0;
+                    m_lastDefectCount = 0;
+                    m_lastAttemptCount = 0;
+                    m_waitMaterialStopRequested = false;
+                });
     }
 
-    // =====================================================
-    // ✅ 서버(MFG)가 보낸 로그인 요청 처리
-    // =====================================================
     connect(ua, &OpcUaService::mfgAuthRequestReceived, this,
             [this](const QString &id, const QString &pw){
-                bool ok = m_authService.checkServerAccount("MFG", id, pw);
-
-                qDebug() << "[MES] MFG auth request:"
-                         << "id =" << id
-                         << "result =" << ok;
-
+                const bool ok = m_authService.checkServerAccount("MFG", id, pw);
+                qDebug() << "[MES] MFG auth request:" << "id =" << id << "result =" << ok;
                 ua->mfgSendAuthResult(ok);
             });
 
-    // =====================================================
-    // ✅ 서버(LOG)가 보낸 로그인 요청 처리
-    // =====================================================
     connect(ua, &OpcUaService::logAuthRequestReceived, this,
             [this](const QString &id, const QString &pw){
-                bool ok = m_authService.checkServerAccount("LOG", id, pw);
-
-                qDebug() << "[MES] LOG auth request:"
-                         << "id =" << id
-                         << "result =" << ok;
-
+                const bool ok = m_authService.checkServerAccount("LOG", id, pw);
+                qDebug() << "[MES] LOG auth request:" << "id =" << id << "result =" << ok;
                 ua->logSendAuthResult(ok);
             });
-    // =====================================================
-    // ✅ 서버(LOG)가 보낸 로그인 요청 처리
-    // =====================================================
 
+    connect(ua, &OpcUaService::logConnectedChanged, this, [this](bool connected) {
+        if (!connected)
+            return;
 
+        if (!DatabaseManager::instance().connect()) {
+            qDebug() << "[MES] DB connect failed -> skip LOG init sync";
+            return;
+        }
 
+        const WarehouseStockSnapshot snap = ScmManageService::getWarehouseStockSnapshot();
+        ua->logInitStocks(snap.wh1, snap.wh2, snap.wh3);
+    });
+
+    connect(ua, &OpcUaService::mfgProdCountUpdated, this, [this](quint64 v) {
+        if (m_activeProdOrderId.isEmpty() || m_activeProductId.isEmpty())
+            return;
+
+        const int prodCount = static_cast<int>(v);
+        const int delta = prodCount - m_lastProdCount;
+        if (delta <= 0)
+            return;
+
+        m_lastProdCount = prodCount;
+        ManufactureService::increaseProductStock(m_activeProductId, delta);
+        ManufactureService::updateProductLogProgress(m_activeProdOrderId, m_lastProdCount, m_lastDefectCount,
+                                                    m_waitMaterialStopRequested ? "WAIT_MAT" : "INPROC");
+    });
+
+    connect(ua, &OpcUaService::mfgDefectCountUpdated, this, [this](quint64 v) {
+        if (m_activeProdOrderId.isEmpty())
+            return;
+
+        m_lastDefectCount = static_cast<int>(v);
+        ManufactureService::updateProductLogProgress(m_activeProdOrderId, m_lastProdCount, m_lastDefectCount,
+                                                    m_waitMaterialStopRequested ? "WAIT_MAT" : "INPROC");
+    });
+
+    connect(ua, &OpcUaService::mfgAttemptCountUpdated, this, [this](quint64 v) {
+        if (m_activeProdOrderId.isEmpty() || m_activeProductId.isEmpty())
+            return;
+
+        const int attemptCount = static_cast<int>(v);
+        const int delta = attemptCount - m_lastAttemptCount;
+        if (delta <= 0)
+            return;
+
+        m_lastAttemptCount = attemptCount;
+
+        const auto recipe = ManufactureService::getRecipeItemsByProductId(m_activeProductId);
+        for (const auto &item : recipe) {
+            if (item.warehouseNo < 1 || item.warehouseNo > 3)
+                continue;
+
+            const quint32 consumeQty = static_cast<quint32>(item.quantityRequired * delta);
+            ua->logConsume(item.warehouseNo, consumeQty);
+        }
+
+        ManufactureService::consumeRecipeItems(m_activeProductId, delta);
+        ManufactureService::updateProductLogProgress(m_activeProdOrderId, m_lastProdCount, m_lastDefectCount,
+                                                    m_waitMaterialStopRequested ? "WAIT_MAT" : "INPROC");
+    });
+
+    connect(ua, &OpcUaService::logWhLowStockUpdated, this, [this](int, bool low) {
+        if (!low || m_activeProdOrderId.isEmpty() || m_waitMaterialStopRequested)
+            return;
+
+        m_waitMaterialStopRequested = true;
+        ua->mfgStopOrder();
+        ManufactureService::markProductionOrderWaitMaterial(m_activeProdOrderId);
+        ManufactureService::updateProductLogProgress(m_activeProdOrderId, m_lastProdCount, m_lastDefectCount, "WAIT_MAT");
+    });
+
+    connect(ua, &OpcUaService::mfgStatusUpdated, this, [this](const QString &status) {
+        if (m_activeProdOrderId.isEmpty())
+            return;
+
+        if (status.compare("Done", Qt::CaseInsensitive) == 0) {
+            ManufactureService::markProductionOrderDone(m_activeProdOrderId);
+            ManufactureService::updateProductLogProgress(m_activeProdOrderId, m_lastProdCount, m_lastDefectCount, "DONE");
+            m_activeProdOrderId.clear();
+            m_activeProductId.clear();
+            m_lastProdCount = 0;
+            m_lastDefectCount = 0;
+            m_lastAttemptCount = 0;
+            m_waitMaterialStopRequested = false;
+        }
+    });
 
     setupNavigation();
     moveToPage(PageType::Login);
+
     auto* login = qobject_cast<LoginWidget*>(ui->loginPage);
     if (login) {
-        // ✅ 로그인 성공 “딱 한번”만 통신 시작
         connect(login, &LoginWidget::loginSuccess, this, [this](){
             startOpcUaOnce();
         });
-        // connect(ua, &OpcUaService::mfgTempUpdated, this, [](double temp){
-        //     qDebug() << "MFG TEMP =" << temp;
-        // });
-        // connect(ua, &OpcUaService::mfgHumUpdated, this, [](double hum){
-        //     qDebug() << "MFG HUM =" << hum;
-        // });
 
         connect(ua, &OpcUaService::mfgSpeedUpdated, this, [](double speed){
             qDebug() << "MFG SPEED =" << speed;
@@ -74,15 +148,7 @@ MainWindow::MainWindow(QWidget *parent)
         connect(ua, &OpcUaService::mfgProdCountUpdated, this, [](quint64 v){
             qDebug() << "MFG PRODCOUNT =" << v;
         });
-
-
-        // connect(ua, &OpcUaService::logTempUpdated, this, [](double t){
-        //     qDebug() << "LOG TEMP =" << t;
-        // });
-
     }
-
-
 }
 
 MainWindow::~MainWindow() {
@@ -101,7 +167,7 @@ void MainWindow::startOpcUaOnce()
         "/home/pi/MES/servers/certs/mes/cert.der",
         "/home/pi/MES/servers/certs/mes/key.der",
         "/home/pi/MES/servers/certs/mes/trust_mfg.der"
-        );
+    );
 
     ua->connectLog(
         "opc.tcp://10.10.16.210:4841",
@@ -109,14 +175,10 @@ void MainWindow::startOpcUaOnce()
         "/home/pi/MES/servers/certs/mes/cert.der",
         "/home/pi/MES/servers/certs/mes/key.der",
         "/home/pi/MES/servers/certs/mes/trust_log.der"
-        );
-
-
+    );
 }
 
-
 void MainWindow::setupNavigation() {
-    // 위젯 캐스팅
     auto* login = qobject_cast<BasePageWidget*>(ui->loginPage);
     auto* dashboard = qobject_cast<BasePageWidget*>(ui->dashBoardPage);
     auto* partnerManage = qobject_cast<BasePageWidget*>(ui->partnerManagePage);
@@ -125,13 +187,10 @@ void MainWindow::setupNavigation() {
     auto* process = qobject_cast<BasePageWidget*>(ui->processPage);
     auto* manufacture = qobject_cast<BasePageWidget*>(ui->manufacturePage);
 
-    // 모든 위젯을 리스트에 담아 한 번에 연결 (중복 코드 방지)
     QList<BasePageWidget*> pages = {login, dashboard, partnerManage, scmManage, delivery, process, manufacture};
 
     for (BasePageWidget* page : pages) {
         if (page) {
-            // Signal: requestPageChange(PageType)
-            // Slot: moveToPage(PageType) -> 타입이 일치해야 합니다!
             connect(page, &BasePageWidget::requestPageChange, this, &MainWindow::moveToPage);
         }
     }
@@ -164,5 +223,4 @@ void MainWindow::moveToPage(PageType type) {
         ui->stackedWidget->setCurrentWidget(ui->environmentLogsPage);
         break;
     }
-
 }

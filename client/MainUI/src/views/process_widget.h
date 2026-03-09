@@ -19,6 +19,9 @@ public:
 
     ~ProcessWidget();
 
+signals:
+    void productionOrderStarted(const QString &orderId, const QString &productId);
+
 private slots:
     void on_stop_clicked(const QString &process_name);
     void on_start_clicked(const QString &process_name);

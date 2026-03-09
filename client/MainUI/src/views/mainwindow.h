@@ -2,16 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "base/page_types.h" // 1. 이 헤더가 반드시 포함되어야 합니다!
+#include "base/page_types.h"
 #include "opcua_service.h"
-//========================
-//
-//=========================
-#include "auth_service.h"   // ✅ 추가
-//========================
-//
-//=========================
-
+#include "auth_service.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -29,18 +22,18 @@ private:
     Ui::MainWindow *ui;
 
     OpcUaService* ua = nullptr;
-    //========================
-    //
-    //=========================
-    AuthService m_authService;   // ✅ 추가
-    //========================
-    //
-    //=========================
+    AuthService m_authService;
     bool uaStarted = false;
-    void startOpcUaOnce();
 
+    QString m_activeProdOrderId;
+    QString m_activeProductId;
+    int m_lastProdCount = 0;
+    int m_lastDefectCount = 0;
+    int m_lastAttemptCount = 0;
+    bool m_waitMaterialStopRequested = false;
+
+    void startOpcUaOnce();
     void setupNavigation();
-    // 2. 에러 메시지에서 'int'로 인식되던 부분을 'PageType'으로 명확히 수정합니다.
     void moveToPage(PageType type);
 };
 

@@ -19,6 +19,12 @@ struct InboundOrderTask {
     int warehouseNo = 0;
 };
 
+struct WarehouseStockSnapshot {
+    quint32 wh1 = 0;
+    quint32 wh2 = 0;
+    quint32 wh3 = 0;
+};
+
 class ScmManageService
 {
 public:
@@ -29,6 +35,7 @@ public:
 
     static InboundOrderTask getInboundOrderTaskById(const QString& orderId);
     static int warehouseNoFromLocation(const QString& location);
+    static WarehouseStockSnapshot getWarehouseStockSnapshot();
 
     static bool markOrderInProc(const QString& orderId);
     static bool markOrderDone(const QString& orderId);
