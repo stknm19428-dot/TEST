@@ -11,6 +11,8 @@
 #include <QMap>
 #include <QLabel>
 #include <QGridLayout>
+#include <QVBoxLayout>
+#include <QTimer>
 
 DashboardWidget::DashboardWidget(QWidget *parent)
     : BasePageWidget(parent),
@@ -35,8 +37,16 @@ void DashboardWidget::showEvent(QShowEvent *event)
     }
 
     initSensorWidget();
+    initConveyorWidget();
     initStorageCharts();
     initProductionChart();
+
+    // 테스트용 - 나중에 삭제
+    QTimer::singleShot(2000, this, [this]() {
+        update_log_conveyor(1, true);   // 컨베이어1 초록
+        update_log_conveyor(2, false);  // 컨베이어2 빨강
+        update_log_conveyor(3, true);   // 컨베이어3 초록
+    });
 }
 
 void DashboardWidget::set_opcua_service(OpcUaService *service)
@@ -45,13 +55,15 @@ void DashboardWidget::set_opcua_service(OpcUaService *service)
     if (!m_opcua_service) return;
 
     connect(m_opcua_service, &OpcUaService::mfgTempUpdated,
-            this, &DashboardWidget::on_mfg_temp_updated);
+            this, &DashboardWidget::update_mfg_temp);
     connect(m_opcua_service, &OpcUaService::mfgHumUpdated,
-            this, &DashboardWidget::on_mfg_hum_updated);
+            this, &DashboardWidget::update_mfg_hum);
     connect(m_opcua_service, &OpcUaService::logTempUpdated,
-            this, &DashboardWidget::on_log_temp_updated);
+            this, &DashboardWidget::update_log_temp);
     connect(m_opcua_service, &OpcUaService::logHumUpdated,
-            this, &DashboardWidget::on_log_hum_updated);
+            this, &DashboardWidget::update_log_hum);
+    connect(m_opcua_service, &OpcUaService::logWhLoadingUpdated,
+            this, &DashboardWidget::update_log_conveyor);
 }
 
 void DashboardWidget::clearLayout(QLayout *layout)
@@ -128,28 +140,92 @@ void DashboardWidget::initSensorWidget()
     ui->sensor_widget->setLayout(grid);
 }
 
-void DashboardWidget::on_mfg_temp_updated(double temp)
+void DashboardWidget::update_mfg_temp(double temp)
 {
     if (mfg_temp_value)
         mfg_temp_value->setText(QString::number(temp, 'f', 1) + " °C");
 }
 
-void DashboardWidget::on_mfg_hum_updated(double hum)
+void DashboardWidget::update_mfg_hum(double hum)
 {
     if (mfg_hum_value)
         mfg_hum_value->setText(QString::number(hum, 'f', 1) + " %");
 }
 
-void DashboardWidget::on_log_temp_updated(double temp)
+void DashboardWidget::update_log_temp(double temp)
 {
     if (log_temp_value)
         log_temp_value->setText(QString::number(temp, 'f', 1) + " °C");
 }
 
-void DashboardWidget::on_log_hum_updated(double hum)
+void DashboardWidget::update_log_hum(double hum)
 {
     if (log_hum_value)
         log_hum_value->setText(QString::number(hum, 'f', 1) + " %");
+}
+
+
+/* -----------------------------
+   물류 컨베이어 가동 현황
+--------------------------------*/
+
+void DashboardWidget::initConveyorWidget()
+{
+    if (!ui->conveyor_widget) return;
+    if (ui->conveyor_widget->layout()) return;
+
+    QGridLayout *grid = new QGridLayout();
+    grid->setSpacing(8);
+    grid->setContentsMargins(4, 4, 4, 4);
+
+    QStringList names = {"컨베이어1", "컨베이어2", "컨베이어3"};
+
+    for (int i = 0; i < 3; ++i) {
+        // 이름 라벨
+        QLabel *name_label = new QLabel(names[i]);
+        name_label->setAlignment(Qt::AlignCenter);
+        name_label->setStyleSheet(
+            "background-color: #3a3a3a;"
+            "color: white;"
+            "font-weight: bold;"
+            "font-size: 11px;"
+            "padding: 5px;"
+            "border-radius: 4px;"
+            );
+        grid->addWidget(name_label, 0, i);
+
+        // 상태 원 라벨
+        QLabel *status_label = new QLabel();
+        status_label->setAlignment(Qt::AlignCenter);
+        status_label->setFixedSize(40, 40);
+        status_label->setStyleSheet(
+            "background-color: #e74c3c;"  // 기본 빨간원
+            "border-radius: 20px;"
+            );
+        grid->addWidget(status_label, 1, i, Qt::AlignHCenter);
+        conveyor_status[i] = status_label;
+    }
+
+    ui->conveyor_widget->setLayout(grid);
+}
+
+void DashboardWidget::update_log_conveyor(int idx, bool loading)
+{
+    int i = idx - 1;  // 1~3 -> 0~2
+    if (i < 0 || i > 2) return;
+    if (!conveyor_status[i]) return;
+
+    if (loading) {
+        conveyor_status[i]->setStyleSheet(
+            "background-color: #2ecc71;"  // 초록원
+            "border-radius: 20px;"
+            );
+    } else {
+        conveyor_status[i]->setStyleSheet(
+            "background-color: #e74c3c;"  // 빨간원
+            "border-radius: 20px;"
+            );
+    }
 }
 
 
@@ -265,6 +341,7 @@ void DashboardWidget::initProductionChart()
         }
     }
 
+    // 날짜별로 제품 생산량 채우기 (없으면 0)
     for (const auto &productName : barSetMap.keys()) {
         for (const auto &date : dateList) {
             int count = 0;
@@ -288,16 +365,19 @@ void DashboardWidget::initProductionChart()
     chart->setTitle("Daily Production (2026-03-03 ~ 2026-03-09)");
     chart->setAnimationOptions(QChart::SeriesAnimations);
 
+    // X축
     QBarCategoryAxis *axisX = new QBarCategoryAxis();
     axisX->append(dateList);
     chart->addAxis(axisX, Qt::AlignBottom);
     series->attachAxis(axisX);
 
+    // Y축 (타이틀 없음)
     QValueAxis *axisY = new QValueAxis();
     axisY->setLabelFormat("%d");
     chart->addAxis(axisY, Qt::AlignLeft);
     series->attachAxis(axisY);
 
+    // 범례
     chart->legend()->setVisible(true);
     chart->legend()->setAlignment(Qt::AlignTop);
 
@@ -305,7 +385,7 @@ void DashboardWidget::initProductionChart()
     chartView->setRenderHint(QPainter::Antialiasing);
     chartView->setMinimumHeight(300);
 
-    ui->prodChartLayout->addWidget(chartView);
+    ui->prodChartLayout->addWidget(chartView);  // ✅ 바로 추가
 
     qDebug() << "Production chart created, data count:" << productionData.size();
     qDebug() << "Dates:" << dateList;

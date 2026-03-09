@@ -187,6 +187,16 @@
     </rect>
    </property>
   </widget>
+  <widget class="QWidget" name="conveyor_widget" native="true">
+   <property name="geometry">
+    <rect>
+     <x>300</x>
+     <y>350</y>
+     <width>241</width>
+     <height>80</height>
+    </rect>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections/>
