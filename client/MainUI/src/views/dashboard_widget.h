@@ -2,15 +2,14 @@
 #define DASHBOARD_WIDGET_H
 
 #include "base/base_page_widget.h"
-
 #include <QtCharts/QChartView>
 #include <QtCharts/QPieSeries>
 #include <QtCharts/QStackedBarSeries>
 #include <QtCharts/QBarSet>
 #include <QtCharts/QBarCategoryAxis>
+#include <QtCharts/QValueAxis>   // ✅ 추가됨
 #include <QtCharts/QChart>
 #include <QChart>
-
 #include <QShowEvent>
 
 namespace Ui {
@@ -19,7 +18,6 @@ class DashboardWidget;
 
 class DashboardWidget : public BasePageWidget {
     Q_OBJECT
-
 public:
     explicit DashboardWidget(QWidget *parent = nullptr);
     ~DashboardWidget();
@@ -35,10 +33,8 @@ private slots:
     void on_ManufactureBtn_clicked();
     void on_ErrorLogBtn_clicked();
 
-
 private:
     Ui::DashboardWidget *ui;
-
     void initStorageCharts();
     void initProductionChart();
     void clearLayout(QLayout *layout);
